@@ -1,0 +1,2713 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>レスの数だけ嘘がある(体験版)</title>
+<meta property="og:type" content="website">
+<meta property="og:title" content="レスの数だけ嘘がある(体験版)">
+<meta property="og:description" content="匿名掲示板を読み、判決文を書く。掲示板考証ミステリの体験版。">
+<meta property="og:image" content="ogp.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="レスの数だけ嘘がある(体験版)">
+<meta name="twitter:description" content="匿名掲示板を読み、判決文を書く。掲示板考証ミステリの体験版。">
+<meta name="twitter:image" content="ogp.png">
+<meta name="description" content="匿名掲示板を読み、判決文を書く。掲示板考証ミステリの体験版。">
+<style>
+  :root{
+    --chrome:#c9c6bb;      /* ブラウザ枠 */
+    --chrome-dark:#a8a598;
+    --bg:#e8e8e3;
+    --post:#fffeee;
+    --ink:#1a1a1a;
+    --name:#007700;
+    --thread:#800000;
+    --stamp:#c02a1d;
+    --rule:#b5b5a8;
+    --dim:#6b6b60;
+    --link:#0000cc;
+    --visited:#660099;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    background:#8f8d84;
+    color:var(--ink);
+    font-family:"MS PGothic","ＭＳ Ｐゴシック","Hiragino Kaku Gothic ProN",sans-serif;
+    font-size:13px;
+    line-height:1.6;
+    display:flex;align-items:center;justify-content:center;
+    padding:10px;
+  }
+
+  /* ====== 偽ブラウザ ====== */
+  #browser{
+    width:min(1500px,96vw);height:calc(100vh - 24px);
+    background:var(--chrome);
+    border:1px solid #7d7b70;border-radius:6px 6px 0 0;
+    display:flex;flex-direction:column;
+    box-shadow:0 8px 30px rgba(0,0,0,.35);
+    overflow:hidden;
+  }
+  /* ページ本文は読みやすい幅に留め、余白は枠内で吸収 */
+  .page{max-width:900px;margin:0 auto;width:100%;}
+  /* タイトルバー */
+  #titlebar{
+    display:flex;align-items:center;gap:8px;
+    padding:6px 10px 2px;font-size:11px;color:#4a4840;
+    font-family:"MS PGothic","ＭＳ Ｐゴシック","Hiragino Kaku Gothic ProN",sans-serif;
+  }
+  .winbtn{width:11px;height:11px;border-radius:50%;border:1px solid #7d7b70;background:#dedbd0;}
+  /* タブバー */
+  #tabbar{
+    display:flex;gap:2px;padding:4px 8px 0;overflow-x:auto;scrollbar-width:thin;
+  }
+  .btab{
+    background:var(--chrome-dark);
+    border:1px solid #7d7b70;border-bottom:none;
+    border-radius:5px 5px 0 0;
+    padding:4px 8px 4px 10px;font-size:11px;color:#3d3b33;
+    font-family:"MS PGothic","ＭＳ Ｐゴシック","Hiragino Kaku Gothic ProN",sans-serif;
+    cursor:pointer;user-select:none;white-space:nowrap;
+    max-width:190px;overflow:hidden;text-overflow:ellipsis;
+    flex-shrink:0;transition:background .15s,transform .2s ease;
+    position:relative;display:inline-flex;align-items:center;gap:4px;
+  }
+  .btab:hover{background:#bab7aa;}
+  .btab.active{background:var(--bg);font-weight:700;color:var(--ink);}
+  .btab.active:hover{background:var(--bg);}
+  .btab.new::after{content:" ●";color:var(--stamp);animation:blinkdot 1.2s infinite;}
+  .btab-label{overflow:hidden;text-overflow:ellipsis;}
+  .btab-close{
+    font-size:9px;line-height:1;color:#999;background:none;border:none;
+    cursor:pointer;padding:1px 2px;border-radius:2px;flex-shrink:0;
+  }
+  .btab-close:hover{background:rgba(0,0,0,.15);color:#333;}
+  .btab.drag-ghost{
+    position:fixed;z-index:40;pointer-events:none;
+    opacity:.8;box-shadow:0 4px 12px rgba(0,0,0,.3);
+    transform:scale(1.04);border-bottom:1px solid #7d7b70;
+  }
+  .btab.drag-src{visibility:hidden;}
+  @keyframes blinkdot{50%{opacity:.25;}}
+  /* アドレスバー */
+  #addressbar{
+    display:flex;align-items:center;gap:6px;
+    background:var(--bg);border-top:1px solid #7d7b70;
+    padding:5px 10px;
+  }
+  #urlbox{
+    flex:1;background:#fff;border:1px solid var(--rule);
+    font-size:11px;color:#333;padding:3px 10px;border-radius:3px;
+    font-family:"Consolas","Menlo",monospace;
+    outline:none;min-width:0;
+  }
+  #urlbox:focus{border-color:var(--thread);background:#fffef8;}
+  .navbtn{font-size:12px;color:#555;padding:2px 6px;user-select:none;cursor:pointer;border-radius:3px;
+    font-family:"MS PGothic","ＭＳ Ｐゴシック",sans-serif;}
+  .navbtn:hover{background:#e0ddd0;}
+  .navbtn.dead{color:#b9b6aa;cursor:default;background:none;}
+  /* ブックマークバー */
+  #bookmarkbar{
+    display:flex;gap:4px;align-items:center;
+    background:var(--bg);border-bottom:1px solid var(--rule);
+    padding:3px 10px 5px;font-size:11px;
+    font-family:"MS PGothic","ＭＳ Ｐゴシック","Hiragino Kaku Gothic ProN",sans-serif;
+  }
+  .bm{
+    background:#efeee0;border:1px solid var(--rule);border-radius:3px;
+    padding:2px 10px;cursor:pointer;user-select:none;color:var(--ink);
+  }
+  .bm:hover{background:#fdf3d7;}
+  .bm.accent{border-color:var(--stamp);color:var(--stamp);font-weight:700;}
+  #bmlabel{color:var(--dim);font-size:11px;margin-right:2px;}
+
+  /* ステータスバー */
+  #statusbar{
+    display:flex;justify-content:flex-end;align-items:center;
+    padding:1px 10px;font-size:10px;color:var(--dim);
+    background:var(--bg);border-top:1px solid var(--rule);
+    font-family:"Consolas","Menlo","MS Gothic",monospace;
+    min-height:18px;
+  }
+
+  /* ページ領域 — 極薄ノイズテクスチャ(CSS生成) */
+  #viewport{
+    flex:1;overflow-y:auto;position:relative;
+    background-color:var(--bg);
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect x='0' y='0' width='1' height='1' fill='%23000' opacity='.02'/%3E%3Crect x='2' y='3' width='1' height='1' fill='%23fff' opacity='.03'/%3E%3Crect x='3' y='1' width='1' height='1' fill='%23000' opacity='.015'/%3E%3C/svg%3E");
+  }
+  .page{display:none;padding:16px 18px 60px;}
+  .page.active{display:block;}
+
+  /* ====== 掲示板ページ ====== */
+  .board-head{font-size:11px;color:var(--dim);letter-spacing:.1em;border-bottom:3px double var(--rule);padding-bottom:6px;margin-bottom:4px;}
+  .thread-title{font-size:17px;color:var(--thread);font-weight:700;margin:6px 0 2px;}
+  .thread-sub{font-size:11px;color:var(--dim);margin-bottom:10px;}
+  .post{background:var(--post);border:1px solid #e2e0cc;padding:6px 10px;margin:6px 0;font-size:13px;position:relative;line-height:1.6;}
+  .ph{font-size:11px;margin-bottom:1px;word-break:break-all;color:var(--ink);padding-right:56px;line-height:1.5;}
+  .pn{color:var(--name);font-weight:700;}
+  .pd,.pid{color:var(--dim);}
+  .anc{color:var(--link);}
+  .pb,.popup-body{white-space:pre-line;line-height:1.6;}
+  .aa{font-family:"MS PGothic","ＭＳ Ｐゴシック","Osaka-Mono",monospace;white-space:pre;line-height:1.2;font-size:12px;overflow-x:auto;}
+  .post.newpost{animation:flashin .8s ease;}
+  @keyframes flashin{from{background:#fdf3d7;}to{background:var(--post);}}
+
+  /* 偽広告枠 */
+  .ad-slot{
+    border:1px solid var(--rule);padding:6px 10px;margin:8px 0;
+    font-size:11px;line-height:1.5;position:relative;
+  }
+  .ad-slot .ad-label{
+    position:absolute;top:2px;right:4px;font-size:9px;color:var(--dim);
+    letter-spacing:.05em;
+  }
+  .ad-slot .ad-site{font-weight:700;margin-bottom:2px;}
+  .ad-slot .ad-text{white-space:pre-line;}
+
+  /* URLリンク(開示) */
+  .ulink{color:var(--link);text-decoration:underline;cursor:pointer;word-break:break-all;}
+  .ulink.visited{color:var(--visited);}
+
+  /* レスポップアップ(>>アンカー) */
+  .res-popup{
+    position:absolute;z-index:20;
+    background:var(--post);border:1px solid #7d7b70;
+    padding:6px 10px;max-width:460px;
+    box-shadow:2px 2px 8px rgba(0,0,0,.25);
+    font-size:13px;line-height:1.6;
+    pointer-events:none;
+  }
+
+  /* 引用ボタン */
+  .qbtn{
+    position:absolute;right:6px;top:6px;font-size:10px;color:var(--dim);
+    border:1px solid var(--rule);background:#f4f3e6;border-radius:2px;
+    padding:0 6px;cursor:pointer;opacity:.6;
+  }
+  .qbtn:hover{opacity:1;}
+
+  /* ====== 記事/文書ページ ====== */
+  .newspage{background:#fff;border:1px solid var(--rule);padding:18px 22px;max-width:660px;margin:0 auto;}
+  .news-site{font-size:11px;color:var(--dim);border-bottom:2px solid var(--stamp);padding-bottom:4px;margin-bottom:12px;display:flex;justify-content:space-between;}
+  .news-h{font-size:16px;font-weight:700;margin-bottom:10px;}
+  .docpage{
+    background:#fdfcf2;border:1px solid var(--rule);padding:20px 24px;max-width:640px;margin:0 auto;
+    font-size:13px;
+  }
+  .doc-stamp{font-size:11px;color:var(--dim);text-align:right;margin-bottom:8px;}
+  .docpage h3{font-size:14px;border-bottom:1px solid var(--ink);padding-bottom:4px;margin-bottom:12px;}
+  /* 調書・判旨は明朝 */
+  .docpage p{font-family:"Hiragino Mincho ProN","Yu Mincho","MS PMincho",serif;line-height:1.9;}
+  p{margin-bottom:10px;}
+  .uploader-note{font-size:11px;color:var(--dim);max-width:640px;margin:8px auto 0;text-align:center;}
+
+  /* ====== オーバーレイ(道具) ====== */
+  .overlay{
+    display:none;position:fixed;inset:0;background:rgba(40,38,32,.45);z-index:25;
+  }
+  .overlay.open{display:flex;align-items:center;justify-content:center;padding:20px;}
+  .tool{
+    background:var(--post);border:2px solid var(--ink);width:min(700px,94vw);
+    max-height:calc(100vh - 48px);overflow-y:auto;
+    padding:16px 20px;box-shadow:0 6px 24px rgba(0,0,0,.4);
+  }
+  .tool-head{display:flex;justify-content:space-between;align-items:center;border-bottom:1px dotted var(--rule);padding-bottom:6px;margin-bottom:12px;}
+  .tool-head h2{font-size:14px;color:var(--thread);}
+  .closebtn{cursor:pointer;font-size:13px;color:var(--dim);border:1px solid var(--rule);padding:0 8px;background:#efeee0;}
+  textarea{
+    width:100%;min-height:240px;background:#fffef5;border:1px solid var(--rule);
+    padding:12px;font-family:inherit;font-size:13px;line-height:1.6;resize:vertical;
+  }
+  .memo-hint{font-size:11px;color:var(--dim);margin-top:6px;}
+  .law{border:1px solid var(--rule);background:#fff;margin:10px 0;padding:10px 14px;}
+  .law h3{font-size:13px;color:var(--thread);margin-bottom:4px;}
+  .law .txt{font-family:"Hiragino Mincho ProN","Yu Mincho","MS PMincho",serif;font-size:13px;line-height:1.9;}
+  .law-note{font-size:11px;color:var(--dim);}
+
+  /* ====== 認定 ====== */
+  /* 採取可能な語 */
+  .tok{color:var(--ink);background:#ecf4e2;border-bottom:1.5px dotted var(--name);padding:0 3px;border-radius:2px;cursor:pointer;}
+  .tok:hover{background:#dcecd0;}
+  .tok.got{background:#f0efe2;color:var(--dim);border-bottom:1.5px solid var(--rule);cursor:default;}
+  .law-note .tok{color:var(--ink);}
+
+  /* 認定文と穴 */
+  .statement{
+    background:#fff;border:1px solid var(--rule);padding:14px 16px;
+    font-family:"Hiragino Mincho ProN","Yu Mincho","MS PMincho",serif;font-size:13.5px;line-height:2.2;
+  }
+  .slot2{
+    display:inline-block;min-width:64px;text-align:center;
+    border:1.5px dashed var(--thread);background:#fdfcf2;color:var(--dim);
+    padding:0 10px;margin:0 2px;cursor:pointer;border-radius:2px;
+    font-family:"MS PGothic","ＭＳ Ｐゴシック","Hiragino Kaku Gothic ProN",sans-serif;font-size:13px;
+  }
+  .slot2.filled{color:var(--ink);background:#fdf3d7;border-style:solid;font-weight:700;}
+  .slot2.sel{border-color:var(--stamp);background:#f7ece9;}
+  .pooltray{
+    background:#efeee0;border:1px solid var(--rule);padding:10px 12px;min-height:44px;
+    display:flex;flex-wrap:wrap;gap:6px;align-items:center;
+  }
+  .chip{
+    background:#fff;border:1.5px solid var(--name);color:var(--ink);
+    padding:2px 12px;font-size:12px;cursor:pointer;border-radius:12px;user-select:none;
+  }
+  .chip:hover{background:#e9f2e2;}
+
+  /* 嘘指摘モード */
+  body.pointing .sent{cursor:pointer;background:#fdf3d7;box-shadow:0 0 0 1px var(--stamp) inset;}
+  body.pointing .sent:hover{background:#f7d9d0;}
+  em{font-style:normal;color:var(--thread);}
+
+  .q{margin:13px 0;}
+  .q-label{font-weight:700;font-size:13px;margin-bottom:4px;display:block;}
+  select{
+    font-size:13px;padding:6px 10px;border:1.5px dashed var(--thread);
+    background:#fff;color:var(--ink);max-width:100%;font-family:inherit;
+  }
+  .slider-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  input[type=range]{flex:1;min-width:150px;accent-color:var(--thread);}
+  .sent-val{font-weight:700;color:var(--thread);min-width:150px;}
+  .chk{font-size:13px;}
+
+  /* 体験版のクリア後画面(製品ビルドでは出ない) */
+  .demo-outro{
+    margin:18px 0;padding:14px 16px;border:1px solid var(--rule);
+    background:#f2f0e6;text-align:center;
+  }
+  .demo-outro p{font-size:14px;font-weight:700;margin:0 0 10px;line-height:1.7;}
+  .demo-btn{
+    display:inline-block;background:var(--thread);color:#fffeee;
+    padding:8px 22px;font-size:13px;font-weight:700;text-decoration:none;
+  }
+  .demo-btn:hover{opacity:.85;}
+  body.skin-night .demo-outro{background:#252520;border-color:#3e3e38;}
+
+  /* 最終認定(finalRecognition・フラグ) */
+  .final-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+  #finalInput{
+    font-size:13px;padding:6px 10px;border:1.5px dashed var(--thread);
+    background:#fff;color:var(--ink);font-family:inherit;min-width:16em;
+  }
+  /* 縦軸年表(最終認定の正解時) */
+  .kt{margin-top:12px;border-top:1px solid var(--rule);padding-top:10px;}
+  .kt-head{font-weight:700;font-size:13px;margin-bottom:8px;}
+  .kt-row{display:flex;gap:10px;padding:6px 0;border-bottom:1px dotted var(--rule);}
+  .kt-date{
+    flex:0 0 8.5em;font-size:11px;color:var(--dim);
+    font-family:Consolas,Menlo,monospace;
+  }
+  .kt-ch{display:block;color:var(--thread);font-family:inherit;}
+  .kt-body{flex:1;}
+  .kt-kind{font-size:11px;color:var(--dim);}
+  .kt-text{font-size:13px;line-height:1.6;}
+  .kt-note{font-size:11px;color:var(--dim);margin-top:2px;}
+
+  /* エンディング(ending・フラグ) — 一枚画面 */
+  .ending{
+    position:fixed;inset:0;z-index:60;background:#12110e;
+    display:flex;align-items:center;justify-content:center;
+    opacity:0;pointer-events:none;transition:opacity 1.2s ease;
+  }
+  .ending.up{opacity:1;pointer-events:auto;}
+  .ending-inner{max-width:520px;padding:0 24px;}
+  .ending-post{
+    border-left:2px solid #3a382f;padding-left:14px;color:#d8d4c4;
+  }
+  .ending-post .ph{font-size:11px;color:#7d7a6b;margin-bottom:6px;}
+  .ending-post .pn{color:#8fae7a;font-weight:700;}
+  .ending-post .pb{font-size:15px;line-height:1.9;white-space:pre-wrap;}
+  .ending-caption{
+    margin-top:36px;text-align:right;font-size:11px;color:#5d5a4e;letter-spacing:.08em;
+  }
+
+  /* about:save — 開発者用のセーブデータ表示(世界の外。素の見た目でよい) */
+  .devpage{
+    font-family:Consolas,Menlo,monospace;font-size:12px;color:var(--ink);
+    padding:12px 14px;
+  }
+  .devpage .dev-head{font-size:14px;font-weight:700;margin-bottom:4px;}
+  .devpage .dev-meta{font-size:11px;color:var(--dim);margin-bottom:12px;}
+  .devpage h3{font-size:12px;margin:14px 0 4px;}
+  .devpage .dev-count{color:var(--dim);font-weight:400;}
+  .dev-table{border-collapse:collapse;width:100%;table-layout:fixed;}
+  .dev-table th,.dev-table td{
+    border:1px solid var(--rule);padding:3px 6px;text-align:left;
+    vertical-align:top;font-weight:400;word-break:break-all;white-space:pre-wrap;
+  }
+  .dev-table th{width:14em;background:#f2f0e6;font-weight:700;}
+  .dev-table .dev-empty{color:var(--dim);}
+  .devpage .dev-foot{margin-top:14px;font-size:11px;color:var(--dim);}
+  .devpage .dev-note{font-size:11px;color:var(--dim);margin-left:8px;}
+  body.skin-night .dev-table th{background:#302e28;}
+
+  /* ============================================================
+     過去ログ倉庫(旧UI)。2000年代の個人掲示板。
+     現行の板(明朝・生成りの紙)と並べて一目で世代が違うと分かること。
+     MSゴシック系 / 白背景 / 罫線 / 赤いスレタイ / 緑の名前 / 紫の既読リンク
+     ============================================================ */
+  .kakolog{
+    background:#efefef;color:#000;
+    font-family:"ＭＳ Ｐゴシック","MS PGothic",Osaka,"ヒラギノ角ゴ Pro W3",sans-serif;
+    font-size:13px;line-height:1.35;
+    padding:8px;border:2px solid #808080;margin:2px;
+  }
+  .kakolog .kako-archive{
+    background:#ffffcc;border:1px solid #808080;padding:3px 6px;
+    font-size:11px;color:#333;margin-bottom:8px;
+  }
+  .kakolog .kako-board{
+    background:#ccccff;border:1px solid #808080;border-bottom:none;
+    padding:2px 6px;font-size:11px;font-weight:700;color:#000080;
+  }
+  .kakolog .kako-title{
+    background:#fff;border:1px solid #808080;
+    color:#cc0000;font-size:16px;font-weight:700;text-align:center;
+    padding:6px 4px;margin-bottom:10px;
+  }
+  .kakolog .kako-posts{background:#fff;border:1px solid #808080;padding:8px;}
+  /* 旧レス: ヘッダは1行、引用ボタンは目立たせない */
+  .kakolog .kako-post{
+    border:none;border-bottom:1px dotted #b0b0b0;
+    background:transparent;padding:4px 0 6px;margin:0;position:relative;
+  }
+  .kakolog .kako-post:last-child{border-bottom:none;}
+  .kakolog .kako-post .ph{
+    font-size:12px;color:#000;margin-bottom:2px;font-weight:400;
+  }
+  .kakolog .kako-post .pn{color:#008000;font-weight:700;}
+  .kakolog .kako-post .pd{color:#000;}
+  .kakolog .kako-post .pid{color:#666;}
+  .kakolog .kako-post .pb{
+    font-size:13px;color:#000;white-space:pre-wrap;padding-left:1.2em;
+  }
+  .kakolog .kako-post .qbtn{
+    color:#0000ee;font-size:10px;text-decoration:underline;background:none;border:none;
+  }
+  .kakolog .kako-post .qbtn:hover{color:#cc0000;}
+  /* 旧サイトのリンク色。踏んだら紫 */
+  .kakolog .ulink{color:#0000ee;text-decoration:underline;background:none;border:none;}
+  .kakolog .ulink.visited{color:#551a8b;}
+  .kakolog .anc{color:#0000ee;text-decoration:underline;}
+  .kakolog .kako-foot{
+    margin-top:10px;padding-top:6px;border-top:1px solid #808080;
+    font-size:11px;color:#666;text-align:center;line-height:1.6;
+  }
+
+  /* 民事: 和解勧告(配分バー) */
+  .settlement .settle-lead{font-size:12px;color:var(--dim);line-height:1.6;margin-bottom:8px;}
+  .settlement .stg-head{
+    font-size:12px;font-weight:700;border-bottom:1px solid var(--rule);
+    padding-bottom:2px;margin-bottom:6px;
+  }
+  .settlement .stg-list{margin-bottom:10px;}
+  .settlement .stg{
+    border-left:3px solid var(--rule);padding:4px 0 4px 8px;margin-bottom:6px;
+  }
+  .settlement .stg label{font-size:13px;font-weight:700;cursor:pointer;display:block;}
+  .settlement .stg-note{font-size:11px;color:var(--dim);line-height:1.55;margin-top:2px;}
+  .settlement .alloc-basis{
+    font-size:12px;padding:5px 8px;background:#f2f0e6;border:1px solid var(--rule);
+    margin-bottom:12px;display:flex;flex-wrap:wrap;gap:4px 14px;align-items:baseline;
+  }
+  .settlement .alloc-deemed{color:var(--dim);font-size:11px;}
+  /* 目盛りが上下にはみ出すので行間に余裕を持たせる */
+  .alloc-row{margin-bottom:14px;}
+  .alloc-head{display:flex;align-items:baseline;gap:8px;font-size:12px;margin-bottom:5px;}
+  .alloc-name{font-weight:700;min-width:8em;}
+  .alloc-val{font-weight:700;color:var(--thread);}
+  .alloc-diff{font-size:11px;color:var(--dim);}
+  .alloc-diff.plus{color:#2e6b3e;}
+  .alloc-diff.minus{color:#8c3a2e;}
+  /* overflow:hidden にすると目盛り(バー外にはみ出す)が切れるので visible のまま。
+     .alloc-fill は幅が100%を超えないので溢れない */
+  .alloc-bar{
+    position:relative;height:12px;background:#e8e5d8;border:1px solid var(--rule);
+  }
+  .alloc-fill{height:100%;background:var(--thread);opacity:.55;}
+  /* 法定計算値の目盛り(トグルで動く)。
+     0%(=0円)や100%でもバーの枠線に埋もれないよう、線を半分外へ出し、上に▼を付ける */
+  .alloc-guide{
+    position:absolute;top:-3px;bottom:-3px;width:2px;margin-left:-1px;
+    background:repeating-linear-gradient(to bottom,
+      rgba(60,50,40,.75) 0 2px, transparent 2px 4px);
+  }
+  .alloc-guide::before{
+    content:"";position:absolute;left:-3px;top:-4px;
+    border-left:4px solid transparent;border-right:4px solid transparent;
+    border-top:4px solid rgba(60,50,40,.75);
+  }
+  .alloc-legend{font-size:11px;color:var(--dim);}
+  .alloc-row input[type=range]{width:100%;margin-top:4px;}
+  button{
+    background:var(--thread);color:#fffeee;border:none;padding:8px 22px;
+    font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:8px;
+  }
+  button:disabled{background:var(--rule);cursor:default;}
+  button.ghost{background:#efeee0;color:var(--ink);border:1px solid var(--rule);font-weight:400;}
+  .result{
+    margin-top:10px;padding:8px 12px;border-left:4px solid var(--thread);
+    background:#f7ece9;font-size:13px;display:none;
+  }
+  .result.show{display:block;}
+
+  /* ガセ特定 */
+  .gase-list label{display:block;font-size:13px;margin:4px 0;cursor:pointer;}
+  .gase-list input{margin-right:6px;}
+
+  /* ====== リザルト ====== */
+  .hanji{
+    background:#fff;border:1px solid var(--rule);padding:14px 16px;margin:12px 0;
+    font-family:"Hiragino Mincho ProN","Yu Mincho","MS PMincho",serif;font-size:13px;line-height:1.9;
+  }
+  .disclaimer{font-size:11px;color:var(--dim);margin-top:14px;border-top:1px dotted var(--rule);padding-top:8px;}
+
+  /* タスクバー(最小化時) */
+  #taskbar{
+    display:none;position:fixed;bottom:0;left:0;right:0;height:32px;z-index:15;
+    background:linear-gradient(180deg,#d8d5cc,#c0bdb4);border-top:1px solid #aaa;
+    padding:4px 10px;font-size:11px;
+    font-family:"MS PGothic","ＭＳ Ｐゴシック","Hiragino Kaku Gothic ProN",sans-serif;
+  }
+  #taskbar.show{display:flex;align-items:center;}
+  #taskbarBtn{
+    background:linear-gradient(180deg,#e8e6de,#d0cdc4);border:1px solid #999;
+    padding:2px 14px;cursor:pointer;border-radius:2px;font-size:11px;color:#333;
+    box-shadow:inset 0 1px 0 #fff;
+  }
+  #taskbarBtn:hover{background:linear-gradient(180deg,#f0eeea,#e0ddd6);}
+  #browser.minimized{display:none;}
+  body.skin-night #taskbar{background:linear-gradient(180deg,#2a2a24,#222220);border-top-color:#444;}
+  body.skin-night #taskbarBtn{background:linear-gradient(180deg,#333330,#2a2a28);border-color:#555;color:var(--ink);}
+
+  /* 締めAA */
+  #finaleAA{
+    position:fixed;bottom:-260px;right:18px;z-index:20;
+    background:var(--post);border:2px solid var(--ink);
+    padding:10px 16px;box-shadow:0 4px 18px rgba(0,0,0,.4);
+    transition:bottom 1.1s cubic-bezier(.18,1.2,.35,1);
+    max-width:88vw;
+  }
+  #finaleAA.up{bottom:16px;}
+  #finaleAA .aa{font-size:12px;}
+
+  /* ===== 起動画面 ===== */
+  #boot{
+    position:fixed;inset:0;z-index:50;
+    display:flex;flex-direction:column;
+    color:#d8d5c8;
+    font-family:"MS PGothic","ＭＳ Ｐゴシック","Hiragino Kaku Gothic ProN",sans-serif;
+  }
+  /* Phase 1: 起動ログ(黒画面) */
+  .boot-log{
+    position:absolute;inset:0;background:#1a1a18;z-index:2;
+    padding:30px 40px;font-family:"Consolas","Menlo","MS Gothic",monospace;
+    font-size:12px;line-height:1.7;color:#8a8a7a;
+    transition:opacity .4s;
+  }
+  .boot-log.done{opacity:0;pointer-events:none;}
+  .boot-log-line{opacity:0;transition:opacity .15s;}
+  .boot-log-line.show{opacity:1;}
+  .boot-log-line .ok{color:#6a9a4a;}
+  /* Phase 2: ホームページ */
+  .boot-home{
+    position:absolute;inset:0;z-index:1;
+    opacity:0;transition:opacity .5s;
+    display:flex;flex-direction:column;
+  }
+  .boot-home.show{opacity:1;}
+  .boot-hp{
+    flex:1;background:var(--bg);overflow-y:auto;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect x='0' y='0' width='1' height='1' fill='%23000' opacity='.02'/%3E%3Crect x='2' y='3' width='1' height='1' fill='%23fff' opacity='.03'/%3E%3Crect x='3' y='1' width='1' height='1' fill='%23000' opacity='.015'/%3E%3C/svg%3E");
+  }
+  .boot-hp-inner{max-width:720px;margin:0 auto;padding:18px 20px 40px;}
+  .boot-hp-head{
+    font-size:11px;color:var(--dim);border-bottom:3px double var(--rule);
+    padding-bottom:6px;margin-bottom:10px;letter-spacing:.1em;
+  }
+  .boot-hp-boards{
+    font-family:"Consolas","Menlo","MS Gothic",monospace;font-size:12px;color:var(--link);
+    margin-bottom:16px;line-height:1.8;
+  }
+  .boot-hp-boards span{margin-right:8px;}
+  .boot-banner{
+    border:1px solid var(--rule);background:var(--post);padding:10px 14px;
+    margin-bottom:16px;text-align:center;
+  }
+  .boot-banner-title{
+    font-size:18px;font-weight:700;color:var(--thread);letter-spacing:.06em;
+    font-family:"Hiragino Mincho ProN","Yu Mincho","MS PMincho",serif;
+    margin-bottom:2px;
+  }
+  .boot-banner-sub{font-size:10px;color:var(--dim);}
+  .boot-hot{
+    border:1px solid var(--stamp);background:#fff;padding:10px 14px;margin-bottom:14px;
+  }
+  .boot-hot-head{
+    font-size:11px;font-weight:700;color:var(--stamp);border-bottom:1px solid var(--stamp);
+    padding-bottom:4px;margin-bottom:8px;
+  }
+  .boot-hot-link{
+    color:var(--link);text-decoration:underline;cursor:pointer;font-size:13px;
+    animation:hotpulse 1.6s ease-in-out infinite;
+  }
+  @keyframes hotpulse{0%,100%{opacity:1;}50%{opacity:.5;}}
+  .boot-history{
+    border:1px solid var(--rule);background:var(--post);padding:8px 12px;margin:12px 0;
+  }
+  .boot-history-head{
+    font-size:11px;color:var(--dim);border-bottom:1px solid var(--rule);
+    padding-bottom:4px;margin-bottom:6px;
+  }
+  .boot-history a{
+    display:block;font-size:12px;padding:2px 0;text-decoration:underline;
+  }
+  .boot-history a.unvisited{color:var(--link);}
+  .boot-history a.visited{color:var(--visited);}
+  .boot-footer{
+    font-size:10px;color:var(--dim);margin-top:20px;border-top:1px dotted var(--rule);
+    padding-top:8px;line-height:1.6;
+  }
+  #boot.fade{pointer-events:none;}
+  #boot.fade .boot-log,#boot.fade .boot-home{opacity:0;}
+
+  /* ブックマークアイコン */
+  .bm-icon{vertical-align:-2px;margin-right:2px;}
+
+  /* 付箋トースト(右上スライドイン) */
+  #toastStack{
+    position:fixed;top:12px;right:12px;z-index:35;
+    display:flex;flex-direction:column;gap:6px;
+    pointer-events:none;
+  }
+  .toast{
+    background:#fdfcf2;color:var(--ink);border:1px solid var(--rule);
+    border-left:4px solid var(--stamp);
+    padding:7px 14px;font-size:12px;line-height:1.5;
+    box-shadow:2px 2px 8px rgba(0,0,0,.18);
+    max-width:340px;white-space:pre-line;
+    transform:translateX(120%);transition:transform .3s ease;
+    pointer-events:auto;
+  }
+  .toast.show{transform:translateX(0);}
+  .toast.hide{transform:translateX(120%);}
+
+  /* ============================================================
+     オプションダイアログ(あかしやブラウザ 2.4)— IE6様式
+     ============================================================ */
+  .opt-win{
+    background:var(--chrome);border:2px outset #e2e0d8;
+    width:min(440px,92vw);box-shadow:0 6px 24px rgba(0,0,0,.45);
+    font-size:12px;color:#1a1a1a;
+    font-family:"MS PGothic","ＭＳ Ｐゴシック","Hiragino Kaku Gothic ProN",sans-serif;
+  }
+  .opt-win-sm{width:min(360px,90vw);}
+  .opt-titlebar{
+    background:linear-gradient(90deg,#0a246a,#a6caf0);
+    color:#fff;font-size:11px;font-weight:700;
+    padding:3px 4px 3px 8px;display:flex;justify-content:space-between;align-items:center;
+  }
+  .opt-x{
+    background:var(--chrome);color:#000;border:1px outset #e2e0d8;
+    font-size:11px;line-height:1;padding:1px 5px;cursor:pointer;
+  }
+  .opt-x:active{border-style:inset;}
+  /* タブ */
+  .opt-tabs{display:flex;gap:2px;padding:6px 8px 0;background:var(--chrome);}
+  .opt-tab{
+    background:var(--chrome);border:1px solid #7d7b70;border-bottom:none;
+    padding:3px 12px;font-size:11px;cursor:pointer;position:relative;top:1px;
+  }
+  .opt-tab.active{background:var(--bg);font-weight:700;padding-bottom:4px;top:0;}
+  .opt-body{
+    background:var(--bg);border:1px solid #7d7b70;margin:0 8px;
+    padding:12px;min-height:170px;
+  }
+  .opt-group{border:1px groove #b5b5a8;padding:8px 10px 10px;margin-bottom:10px;}
+  .opt-group legend{font-size:11px;padding:0 4px;color:#1a1a1a;}
+  .opt-row{display:flex;align-items:center;gap:8px;margin:4px 0;}
+  .opt-right{justify-content:flex-end;}
+  .opt-inline{font-size:12px;white-space:nowrap;}
+  .opt-text{
+    flex:1;min-width:0;font-size:12px;padding:2px 4px;
+    border:1px inset #d8d6cc;background:#fff;color:#555;
+    font-family:Consolas,Menlo,monospace;
+  }
+  .opt-text[readonly]{background:#eeece4;cursor:default;}
+  .opt-desc{font-size:11px;color:var(--dim);line-height:1.6;margin:2px 0 6px;}
+  .opt-list{display:flex;flex-direction:column;gap:2px;}
+  .opt-radio{font-size:12px;cursor:pointer;display:block;}
+  .opt-radio input{margin-right:5px;vertical-align:-1px;}
+  .opt-val{font-size:11px;min-width:2.2em;text-align:right;}
+  /* IE風ボタン */
+  .opt-btn{
+    background:var(--chrome);color:#1a1a1a;border:1px outset #e2e0d8;
+    font-size:12px;font-weight:400;padding:3px 14px;min-width:76px;
+    cursor:pointer;margin:0;font-family:inherit;
+  }
+  .opt-btn:hover:not(:disabled){background:#d4d1c6;}
+  .opt-btn:active:not(:disabled){border-style:inset;}
+  .opt-btn:disabled{color:#8f8d84;cursor:default;border-style:outset;}
+  .opt-foot{
+    display:flex;justify-content:flex-end;gap:6px;
+    padding:10px 8px;background:var(--chrome);
+  }
+  /* 詳細設定のツリー */
+  .opt-tree{
+    border:1px inset #d8d6cc;background:#fff;padding:6px 8px;min-height:90px;
+  }
+  .opt-tree-node{font-size:12px;font-weight:700;margin-bottom:4px;}
+  .opt-tree-item{display:block;font-size:12px;padding-left:16px;cursor:pointer;}
+  .opt-tree-item input{margin-right:5px;vertical-align:-1px;}
+  /* 確認ダイアログ(履歴のクリア) */
+  .opt-confirm{
+    position:fixed;inset:0;background:rgba(0,0,0,.35);
+    display:flex;align-items:center;justify-content:center;z-index:70;
+  }
+  .opt-warn{font-size:12px;line-height:1.7;padding:6px 2px;}
+  body.skin-night .opt-body,body.skin-night .opt-tree{background:#252520;color:#d8d4c4;}
+  body.skin-night .opt-group legend,body.skin-night .opt-tree-node{color:#d8d4c4;}
+
+  /* 夜スキン(2000年代専ブラ風) */
+  body.skin-night{
+    --chrome:#2a2a24;
+    --chrome-dark:#22221c;
+    --bg:#1e1e1a;
+    --post:#2a2a24;
+    --ink:#d8d5c8;
+    --name:#7ab860;
+    --thread:#c46a5a;
+    --stamp:#c46a5a;
+    --rule:#3a3a34;
+    --dim:#7a7a6e;
+    --link:#7aa8d0;
+    --visited:#a888b8;
+    background:#141410;
+  }
+  body.skin-night #browser{border-color:#3e3e38;box-shadow:0 8px 30px rgba(0,0,0,.6);}
+  body.skin-night .winbtn{background:#3a3a34;border-color:#4a4a44;}
+  body.skin-night #urlbox{background:#252520;color:var(--ink);border-color:#3e3e38;}
+  body.skin-night .bm{background:#2e2e28;border-color:#3e3e38;color:var(--ink);}
+  body.skin-night .newspage{background:#252520;border-color:#3e3e38;}
+  body.skin-night .docpage{background:#28282a;border-color:#3e3e38;}
+  body.skin-night .tool{background:var(--post);border-color:#4a4a44;}
+  body.skin-night .law{background:#252520;border-color:#3e3e38;}
+  body.skin-night .statement{background:#252520;border-color:#3e3e38;}
+  body.skin-night .settlement .alloc-basis{background:#252520;border-color:#3e3e38;}
+  body.skin-night .alloc-bar{background:#302e28;border-color:#3e3e38;}
+  body.skin-night .alloc-guide{
+    background:repeating-linear-gradient(to bottom,
+      rgba(235,230,220,.8) 0 2px, transparent 2px 4px);
+  }
+  body.skin-night .alloc-guide::before{border-top-color:rgba(235,230,220,.8);}
+  body.skin-night .alloc-diff.plus{color:#7fbf8f;}
+  body.skin-night .alloc-diff.minus{color:#d98878;}
+  body.skin-night .pooltray{background:#252520;border-color:#3e3e38;}
+  body.skin-night .chip{background:#302e28;border-color:var(--name);}
+  body.skin-night .tok{background:#2a3a26;border-bottom-color:#5a8a48;}
+  body.skin-night .tok.got{background:#2e2e28;border-bottom-color:#4a4a44;}
+  body.skin-night .toast{background:#2e2e28;border-color:#3e3e38;border-left-color:var(--stamp);color:var(--ink);}
+  body.skin-night .settings-win{background:#2a2a24;border-color:#4a4a44;}
+  body.skin-night .settings-titlebar{background:linear-gradient(90deg,#3a3a50,#4a4a60);}
+  body.skin-night .settings-body{background:var(--bg);}
+  body.skin-night .settings-body fieldset{border-color:#3e3e38;}
+  body.skin-night .hanji{background:#252520;border-color:#3e3e38;}
+  body.skin-night .res-popup{background:var(--post);border-color:#4a4a44;}
+  body.skin-night .result{background:#3a2a28;border-left-color:var(--stamp);}
+  body.skin-night .slot2{background:#252520;border-color:var(--thread);}
+  body.skin-night .slot2.filled{background:#3a3020;}
+  body.skin-night #finaleAA{background:var(--post);border-color:#4a4a44;}
+
+  @media (max-width:600px){
+    body{padding:0;}
+    #browser{height:100vh;max-height:none;border-radius:0;border:none;}
+    .newspage,.docpage{padding:14px;}
+  }
+
+  /* ============================================================
+     フォント設定(オプション → 画面 → フォント)
+     本文にだけ適用する。フォントファイルは同梱しない(font-family参照のみ)。
+     各スタックの末尾に非Windows向けのフォールバックを置いている。
+     ============================================================ */
+  body.font-gothic{
+    --body-font:"MS PGothic","ＭＳ Ｐゴシック","Hiragino Kaku Gothic ProN",
+      "Hiragino Sans","Noto Sans JP","Yu Gothic",sans-serif;
+  }
+  body.font-mincho{
+    --body-font:"MS PMincho","ＭＳ Ｐ明朝","Hiragino Mincho ProN",
+      "Yu Mincho","YuMincho","Noto Serif JP",serif;
+  }
+  body.font-system{ --body-font:sans-serif; }
+
+  /* 適用範囲: 本文(スレ・資料・六法・ダイアログ内の文章) */
+  #viewport .page,
+  .overlay .tool,
+  .overlay .opt-body{
+    font-family:var(--body-font);
+  }
+
+  /* --- 適用してはならない領域(設定に追随させない) --- */
+  /* AAブロック: 字幅がMS Pゴシック前提。崩れるので固定 */
+  #viewport .aa,
+  .res-popup .aa,
+  #finaleAA .aa,
+  .overlay .aa{
+    font-family:"MS PGothic","ＭＳ Ｐゴシック","Osaka-Mono",monospace;
+  }
+  /* 過去ログ倉庫: 2008年のページは表示設定で染まらない遺物 */
+  #viewport .kakolog{
+    font-family:"ＭＳ Ｐゴシック","MS PGothic",Osaka,"ヒラギノ角ゴ Pro W3",sans-serif;
+  }
+  /* クロームUI(ブラウザの顔)は不変 */
+  #titlebar,#tabbar,#addressbar,#bookmarkbar,#statusbar,.btab,.navbtn,.bm{
+    font-family:"MS PGothic","ＭＳ Ｐゴシック","Hiragino Kaku Gothic ProN",sans-serif;
+  }
+  #urlbox,#statusbar{font-family:"Consolas","Menlo","MS Gothic",monospace;}
+</style>
+</head>
+<body>
+
+<div id="browser">
+  <div id="titlebar">
+    <span class="winbtn" id="btnMinimize" title="最小化"></span><span class="winbtn" title="(Electron版で接続予定)"></span><span class="winbtn" title="(Electron版で接続予定)"></span>
+    <span style="margin-left:6px;">あかしやブラウザ 2.4</span>
+  </div>
+  <div id="tabbar"></div>
+  <div id="addressbar">
+    <span class="navbtn" id="btnBack" title="戻る">◀</span><span class="navbtn" id="btnFwd" title="進む">▶</span><span class="navbtn" id="btnReload" title="更新">⟳</span>
+    <input id="urlbox" type="text" value="about:blank" spellcheck="false" autocomplete="off">
+    <span class="navbtn" id="btnSettings" title="設定"><svg width="14" height="14" viewBox="0 0 16 16" style="vertical-align:middle;"><path d="M7 1h2v2.1a5 5 0 011.4.6l1.5-1.5 1.4 1.4-1.5 1.5a5 5 0 01.6 1.4H14v2h-2.1a5 5 0 01-.6 1.4l1.5 1.5-1.4 1.4-1.5-1.5a5 5 0 01-1.4.6V14H7v-2.1a5 5 0 01-1.4-.6l-1.5 1.5-1.4-1.4 1.5-1.5A5 5 0 013.6 9H1V7h2.6a5 5 0 01.6-1.4L2.7 4.1l1.4-1.4 1.5 1.5A5 5 0 017 3.6V1z" fill="none" stroke="currentColor" stroke-width="1.2"/><circle cx="8" cy="8" r="2" fill="none" stroke="currentColor" stroke-width="1.2"/></svg></span>
+  </div>
+  <div id="bookmarkbar">
+    <span id="bmlabel">☆ブックマーク:</span>
+    <span class="bm" data-tool="laws"><svg class="bm-icon" width="14" height="14" viewBox="0 0 16 16"><path d="M3 1h7l3 3v11H3V1z" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M5 5h6M5 7.5h6M5 10h4" stroke="currentColor" stroke-width=".8"/></svg> 六法</span>
+    <span class="bm" data-tool="note"><svg class="bm-icon" width="14" height="14" viewBox="0 0 16 16"><rect x="2" y="1" width="12" height="14" rx="1" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M5 4h6M5 6.5h6M5 9h4" stroke="currentColor" stroke-width=".8"/><path d="M2 3h2M2 6h2M2 9h2M2 12h2" stroke="currentColor" stroke-width="1.2"/></svg> 捜査ノート</span>
+    <span class="bm accent" data-tool="judge"><svg class="bm-icon" width="14" height="14" viewBox="0 0 16 16"><path d="M8 1v6M4 4l4 3 4-3" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M1 7l3 5h0M15 7l-3 5h0M4 12h-3a1 1 0 001 1h2M12 12h3a1 1 0 01-1 1h-2" fill="none" stroke="currentColor" stroke-width="1.1"/><path d="M5 14h6" stroke="currentColor" stroke-width="1.5"/></svg> 認定する</span>
+  </div>
+  <div id="viewport"></div>
+  <div id="statusbar"><span id="gameDate"></span></div>
+</div>
+
+<div class="overlay" id="ov_laws"></div>
+<div class="overlay" id="ov_note"></div>
+<div class="overlay" id="ov_judge"></div>
+
+<!-- 起動ログだけ。ホームは本物のブラウザの中のページ(pg_home)として出す。
+     額縁(クローム)が画面ごとに変わらないようにするため、ここに偽のクロームは置かない -->
+<div id="boot">
+  <div class="boot-log" id="bootLog"></div>
+</div>
+
+<div id="taskbar">
+  <span id="taskbarBtn">あかしやブラウザ 2.4</span>
+</div>
+<div id="finaleAA"></div>
+<div id="toastStack"></div>
+<div class="overlay" id="ov_settings"></div>
+
+<script>
+"use strict";
+
+/* ============================================================
+   事件データ(CASE) — 生成AIの出力対象はここだけ
+   ============================================================ */
+const CASE = {
+
+title:"【◯◯市】雑居ビル前で男性死亡の件【Part3】",
+subtitle:"1 : 名無しの傍聴人 : 2026/01/19(月) 19:45:12.40 ID:Vm3kP7dQ ｜ 続報スレ。土曜深夜の件。逮捕は出たが分からんことだらけだ。憶測歓迎、ただしソースの有無は書け",
+
+/* --- ページ --- */
+pages:[
+{
+ id:"thread", tab:"雑居ビル前の件", url:"http://bbs.akashiya.jp/test/read.cgi/newsura/1768819512/",
+ type:"thread", locked:false,
+ posts:[
+  {no:134, date:"2026/01/19(月) 20:02:18.31", uid:"Kx4mR8pT", body:"整理すると\n・土曜23時50分ごろ、◯◯市の雑居ビル前で男性が倒れてるのが見つかる\n・搬送先で日曜朝に死亡\n・同じビルの客だった男が傷害容疑で逮捕\nここまでが報道。記事はこれ {link:news:http://news.tozai-np.jp/local/20260118/0117bldg}"},
+  {no:135, date:"2026/01/19(月) 20:09:55.72", uid:"aF6wJ2nH", body:"傷害容疑?人死んでるのに?\n殺人じゃないのか"},
+  {no:136, date:"2026/01/19(月) 20:14:40.09", uid:"Kx4mR8pT", body:"&gt;&gt;135\nそこが引っかかる\n逮捕時点の容疑なんて後で変わるとはいえ"},
+  {no:137, date:"2026/01/19(月) 20:22:03.66", uid:"qW7zN3vB", body:"知り合いの知り合いが現場見てたけど\n{tok:w_bin:ビール瓶}で頭カチ割ったらしいぞwwww\nそりゃ死ぬわwwww"},
+  {no:138, date:"2026/01/19(月) 20:25:47.15", uid:"aF6wJ2nH", body:"&gt;&gt;137\nソースは?"},
+  {no:139, date:"2026/01/19(月) 20:28:19.40", uid:"gN1xV5jD", body:"こわ\nあの通り夜よく歩くんだが\nしばらくコンビニ遠回りするわ"},
+  {no:140, date:"2026/01/19(月) 20:31:29.84", uid:"qW7zN3vB", body:"死んだ方の男、例の件で反社の金持ち逃げして追われてたって話\n消されたんだろ普通に"},
+  {no:141, date:"2026/01/19(月) 20:33:50.12", uid:"yB8cK4mS", body:"&gt;&gt;140\nマ?こわすぎ\nやっぱプロの手口なん?"},
+  {no:142, date:"2026/01/19(月) 20:35:27.89", uid:"aF6wJ2nH", body:"&gt;&gt;141\n鵜呑みにすんな\nソース一個も出てねえぞこのスレ"},
+  {no:143, date:"2026/01/19(月) 20:38:12.50", uid:"eS2hL9cU", body:"あのビルの2階のスナック、たまに行くけどね\n死んだ人、先週も店で怒鳴ってたよ。投資がどうとか、金は必ず戻るとか\n相手してた若い常連さんが気の毒だったけどね"},
+  {no:144, date:"2026/01/19(月) 20:41:33.97", uid:"qW7zN3vB", body:"&gt;&gt;143\n出た常連気取りwwww\nスナック通いの妄想はいいからwwww"},
+  {no:145, date:"2026/01/19(月) 20:43:08.55", uid:"yB8cK4mS", body:"で、結局どっちが悪いの?\n3行で頼む"},
+  {no:146, date:"2026/01/19(月) 20:45:36.20", uid:"gN1xV5jD", body:"&gt;&gt;145\nまだ何も分かってないから3行も要らん\n「分からん」で1行だ"},
+  {no:147, date:"2026/01/19(月) 20:55:08.23", uid:"Vm3kP7dQ", body:"取材関係から回ってきた。逮捕された宇野の弁解録取の写しとされるもの\n真偽は各自判断 {link:st_uno:http://up.akashiya.jp/src/1768821308.txt}"},
+  {no:148, date:"2026/01/19(月) 21:03:51.78", uid:"Vm3kP7dQ", body:"ついでにもう一枚。スナック店員の聴取メモとされるもの\n{link:st_kotani:http://up.akashiya.jp/src/1768821831.txt}"},
+  {no:149, date:"2026/01/19(月) 21:12:26.45", uid:"Uc8dQ4rW", name:"くじら ◆WhAle.", body:"あのビルの前けさ通ったら献花が増えてただわ\n寒いのに立ち止まって手を合わせてる人もいた"},
+  {no:150, date:"2026/01/19(月) 21:15:02.11", uid:"aF6wJ2nH", body:"&gt;&gt;149\n誰だお前\nコテつけんな"},
+  {no:151, date:"2026/01/19(月) 21:19:44.90", uid:"Uc8dQ4rW", name:"くじら ◆WhAle.", body:"&gt;&gt;150\nすまんな。写真はブログの方に載せたんで気になる人はどうぞだわ"},
+  {no:152, date:"2026/01/19(月) 21:21:15.38", uid:"aF6wJ2nH", body:"&gt;&gt;151\n宣伝乙"}
+ ]
+},
+{
+ id:"news", tab:"東西新報Web", url:"http://news.tozai-np.jp/local/20260118/0117bldg",
+ type:"news", locked:true, site:"東西新報デジタル ｜ ◯◯・地域",
+ heading:"雑居ビル前で男性死亡 同席の男を傷害容疑で逮捕",
+ html:`<p>17日午後11時50分ごろ、◯◯市中央◯丁目の雑居ビル前の路上で、男性が倒れていると通行人から119番があった。男性は市内の自営業、{tok:w_mashiba:真柴圭吾}さん(46)で、搬送時から{tok:w_ishikifumei:意識不明}の重体で、搬送先の病院で18日朝、死亡が確認された。</p>
+ <p>県警は同日、真柴さんと同じビル内の飲食店に居合わせた会社員、{tok:w_uno:宇野}容疑者(33)を傷害の疑いで逮捕した。調べに対し容疑者は「殴られそうになったのでやり返した」という趣旨の供述をしているという。</p>
+ <p>真柴さんに目立った{tok:w_deisui:泥酔}の兆候はなく、県警は死亡に至った経緯を調べている。</p>
+ <p style="font-size:12px;color:#6b6b60;">(2026年1月18日 13:05配信)</p>`,
+ onOpen:{threadPosts:[
+  {no:153, date:"2026/01/19(月) 21:30:27.63", uid:"Kx4mR8pT", body:"記事で気になったのは容疑が傷害のままなことくらいか\n続報待ちだな"},
+  {no:154, date:"2026/01/19(月) 21:34:50.02", uid:"aF6wJ2nH", body:"&gt;&gt;137のビール瓶どこいったんだよ\n記事に凶器のきの字もないぞ"},
+  {no:155, date:"2026/01/19(月) 21:37:22.48", uid:"yB8cK4mS", body:"自営業(46)って何やってた人なんだろ\nてか46で亡くなるのしんどいな。飯食ってくる"}
+ ]}
+},
+{
+ id:"st_uno", tab:"up.akashiya - 弁解録取(宇野)", url:"http://up.akashiya.jp/src/1768821308.txt",
+ type:"doc", locked:true, stampText:"弁解録取書写しとされるもの / 真偽未確認",
+ heading:"弁解録取書(抄) — 宇野",
+ html:`<p>{sent:un1:「17日の夜、2階のスナックで真柴さんと一緒になりました。金の話になって、店の外の階段下で話そうと言われました。」}</p>
+ <p>{sent:un2:「路上に出たところで、いきなり顔を殴られました。よけたら、今度はそばにあった{tok:w_haizara:スタンド灰皿}を両手で持ち上げて投げつけてきたんです。当たっていたら大怪我じゃすまなかったと思います。夢中で顔を殴り返したら、真柴さんは仰向けに倒れました。」}</p>
+ <p>{sent:un3:「倒れた後も、すぐに起き上がってまた襲ってくると思いました。動けなくするつもりで、無我夢中で足を出しました。それ以上のことは何も考えていません。」}</p>`,
+ onOpen:{threadPosts:[
+  {no:156, date:"2026/01/19(月) 21:48:39.55", uid:"aF6wJ2nH", body:"これ正当防衛じゃねーか\n先に殴ったのも灰皿投げたのも死んだ方かよ"},
+  {no:157, date:"2026/01/19(月) 21:50:41.33", uid:"yB8cK4mS", body:"&gt;&gt;156\nじゃあ無罪じゃん。解散"},
+  {no:158, date:"2026/01/19(月) 21:53:07.91", uid:"gN1xV5jD", body:"一発で{tok:w_kizetsu:気絶}とかあるんだな\n俺も気をつけよ(何に?)"},
+  {no:159, date:"2026/01/19(月) 21:58:41.87", uid:"Rb5tG9xM", body:"昔から言ってるが、本人の弁解だけ読んで解散する奴が一番危ない\n例の縦動画がうpられてるらしいぞ。消される前に見ろ\n{link:video:http://up.akashiya.jp/src/1768823921.txt}"}
+ ]}
+},
+{
+ id:"st_kotani", tab:"up.akashiya - 聴取メモ(店員)", url:"http://up.akashiya.jp/src/1768821831.txt",
+ type:"doc", locked:true, stampText:"参考人聴取メモとされるもの / 真偽未確認",
+ heading:"参考人聴取メモ(抄) — 小谷(スナック従業員)",
+ html:`<p>{sent:kt1:「お二人とも常連さんです。あの晩は、真柴さんの方がずっと大きな声でした。お金は必ず戻る、疑うのかと、宇野さんに詰め寄っていました。」}</p>
+ <p>{sent:kt2:「外で物音がして階段を降りたら、路上に真柴さんが倒れていて、宇野さんがそばに立っていました。真柴さんはぴくりとも動いていませんでした。」}</p>
+ <p>{sent:kt3:「宇野さんは倒れている真柴さんを見下ろして、低い声で何か言ってから、お腹のあたりを何度か踏みました。止めに入る勇気が出ませんでした。」}</p>`,
+ onOpen:{threadPosts:[
+  {no:160, date:"2026/01/19(月) 22:10:33.14", uid:"eS2hL9cU", body:"やっぱり投資の話だったんだね\n先週怒鳴ってたのもそれよ。&gt;&gt;144、妄想じゃなかったでしょ"},
+  {no:161, date:"2026/01/19(月) 22:13:20.05", uid:"yB8cK4mS", body:"&gt;&gt;160\nすまんかった(俺は笑ってないが)\nで、店員さんの言う「低い声で何か」って何て言ったんだ"},
+  {no:162, date:"2026/01/19(月) 22:14:58.71", uid:"aF6wJ2nH", body:"読み比べろって話だよな\nどっちかが本当のこと言ってない"}
+ ]}
+},
+{
+ id:"video", tab:"up.akashiya - 動画解析", url:"http://up.akashiya.jp/src/1768823921.txt",
+ type:"doc", locked:true, stampText:"出所不明文書 / 真偽未確認",
+ heading:"通行人撮影動画 解析メモ(抄)",
+ html:`<p>向かいの歩道から撮影された縦動画(1分12秒、音声あり)。暗所のため画質不良。以下、時系列メモ。</p>
+ <p>{sent:vd1:<strong>0:00〜</strong> — 大柄な男(甲)が相手(乙)の胸ぐらを掴み、殴りかかる。乙は後退してかわす。}<br>
+ {sent:vd2:<strong>0:14</strong> — 甲、路肩の円筒形の物体(スタンド灰皿とみられる)を両手で持ち上げ、乙に向けて投げる。乙は横に跳んでかわす。}<br>
+ {sent:vd3:<strong>0:19</strong> — 体勢を崩した甲の顔面を、乙が右の拳で1回殴打。甲は仰向けに{tok:w_tentou:転倒}し、後頭部から路面に落ちる。}<br>
+ {sent:vd4:<strong>0:23以降</strong> — 甲は{tok:w_ugokanai:動かない}。乙はしばらく甲を見下ろして立っている。}<br>
+ {sent:vd5:<strong>0:47</strong> — 乙の音声:「……舐めてんのか、お前」}<br>
+ {sent:vd6:<strong>0:50〜1:04</strong> — 乙、倒れた甲の腹部を{tok:w_fumi:踏みつけ}る。計3回。甲の反応なし。}</p>`,
+ onOpen:{threadPosts:[
+  {no:163, date:"2026/01/19(月) 22:31:20.46", uid:"aF6wJ2nH", body:"0:47の音声やばいな"},
+  {no:164, date:"2026/01/19(月) 22:33:58.60", uid:"yB8cK4mS", body:"&gt;&gt;163\nどっちの声か分からんくね?画質終わってるし\nつか1分12秒あるのに肝心なとこ映ってなさすぎだろ撮影者無能wwww"},
+  {no:165, date:"2026/01/19(月) 22:35:44.09", uid:"Kx4mR8pT", body:"0:23から0:47まで何も起きてないのがずっと気になってる\n何なんだこの時間。俺には分からん"},
+  {no:166, date:"2026/01/19(月) 22:42:17.83", uid:"Rb5tG9xM", body:"死因がどっちの暴行かでも話が変わるぞ\n解剖の所見が医療系の裏に流れてるって噂だ\n{link:autopsy:http://up.akashiya.jp/src/1768825337.txt}"}
+ ]}
+},
+{
+ id:"autopsy", tab:"up.akashiya - 解剖所見", url:"http://up.akashiya.jp/src/1768825337.txt",
+ type:"doc", locked:true, stampText:"出所不明文書 / 真偽未確認",
+ heading:"司法解剖所見(抄)",
+ html:`<p><strong>死因:</strong> 後頭部強打による頭蓋骨骨折に伴うくも膜下出血。受傷から約6時間後に死亡。</p>
+ <p><strong>後頭部の創:</strong> 路面への転倒による受傷と整合。一撃性。</p>
+ <p><strong>腹部の損傷:</strong> 肋骨骨折2箇所、脾臓損傷。成傷器は靴底様の平坦な鈍体。いずれも生前の受傷だが、<strong>死因への寄与は認められない</strong>。</p>
+ <p><strong>頭部前面:</strong> 顔面に手拳によるとみられる{tok:w_daboku:打撲}痕1箇所。</p>`,
+ onOpen:{threadPosts:[
+  {no:167, date:"2026/01/19(月) 22:58:02.35", uid:"aF6wJ2nH", body:"待て待て待て\n死因は最初の転倒の方なのか\n分からなくなってきたぞ"},
+  {no:168, date:"2026/01/19(月) 23:02:11.74", uid:"yB8cK4mS", body:"&gt;&gt;167\nどっちにしろ踏んでるんだから同じだろ\n人死んでるんだぞ?"},
+  {no:169, date:"2026/01/19(月) 23:04:29.90", uid:"gN1xV5jD", body:"&gt;&gt;168\n同じ……なのか?\n誰か六法持ってこい俺は寝る"},
+  {no:170, date:"2026/01/19(月) 23:12:55.17", uid:"eS2hL9cU", body:"現場のスナック、しばらく休業だって\nママさんが店のブログに書いてたよ {link:blog208:http://blog.akashiya.jp/snack_koyoi/entry-208}"}
+ ]}
+},
+{
+ id:"blog208", tab:"スナックこよい 営業日記", url:"http://blog.akashiya.jp/snack_koyoi/entry-208",
+ type:"news", locked:true, site:"スナックこよい 営業日記 ｜ ママの独り言",
+ heading:"entry-208: しばらくお休みします (2026/01/19)",
+ html:`<p>常連の皆さまへ。報道でご存知の通りです。しばらくお店をお休みします。</p>
+ <p>お二人ともうちの大事なお客さまでした。今は何も書けません。ごめんなさい。</p>
+ <p>ひとつ前の記事は消しました。あんなことになる前の、ただの愚痴だったのに。</p>
+ <p style="font-size:12px;color:#6b6b60;">カテゴリ: お知らせ ｜ コメント欄は閉じています</p>
+ <p style="font-size:12px;color:#6b6b60;">« 前の記事 ｜ 次の記事 »(なし)</p>`,
+ onOpen:{threadPosts:[
+  {no:171, date:"2026/01/19(月) 23:25:40.66", uid:"aF6wJ2nH", body:"ママさん気の毒すぎるだろ\n常連二人がこれって"},
+  {no:172, date:"2026/01/19(月) 23:29:03.28", uid:"Rb5tG9xM", body:"「ひとつ前の記事は消しました」か\nこの板も変わったな。昔なら消える前に魚拓取る奴が必ずいたもんだが"}
+ ]}
+},
+{
+ id:"blog207", tab:"entry-207(削除済)", url:"http://blog.akashiya.jp/snack_koyoi/entry-207",
+ type:"news", locked:true, hidden:true, site:"スナックこよい 営業日記 ｜ サーバーキャッシュ — 削除済み記事",
+ heading:"entry-207: 常連さんのこと (2026/01/16 深夜)",
+ html:`<p>今日も真柴さん、荒れてた。宇野くんに「金は必ず戻る」って、もう何度目かしら。</p>
+ <p>宇野くん、独立資金だったのよね。コツコツ貯めた700万。真柴さんが「確実だ」って言った投資の話、去年の夏。それが全部。</p>
+ <p>真柴さんも悪い人じゃないの。自分も同じ話で損してるし、宇野くんに合わせる顔がないから、ああやって大きな声になるんだと思う。でも宇野くん、最近ずっと黙ってお酒だけ飲んでる。あの静かさの方が、ママは怖い。</p>
+ <p>明日あたり、二人を別々の日に呼ぼうかしら。</p>
+ <p style="font-size:12px;color:#6b6b60;">カテゴリ: 独り言 ｜ この記事は削除されています(キャッシュ表示)</p>`
+},
+{
+ id:"bbstop", tab:"あかしや掲示板", url:"http://bbs.akashiya.jp",
+ type:"news", locked:true, hidden:true, site:"あかしや掲示板 ｜ 板一覧",
+ heading:"あかしやへようこそ",
+ html:`<p style="font-family:Consolas,Menlo,monospace;font-size:13px;">
+ [ニュース速報(表)] [ニュース速報(裏)] [事件・裁判] [ローカル] [雑談] [AA長屋]</p>
+ <div class="aa">　 ∧ ∧\n　(,,ﾟДﾟ)　＜ 貴様、URLを削って板トップまで見ているなッ！\n　@＿)～\n</div>
+ <p style="font-size:11px;color:#6b6b60;">※現在、書き込みはニュース速報(裏)のみ可能です</p>`
+},
+{
+ id:"koyoi_web", tab:"スナックこよい", url:"http://www.snack-koyoi.jp/recruit",
+ type:"news", locked:true, unlisted:true, site:"スナックこよい ｜ 求人のご案内",
+ heading:"従業員募集のお知らせ",
+ html:`<p>この度、スナックこよいは営業を再開いたしました。</p>
+ <p><strong>営業時間:</strong> 19:00〜翌1:00(日曜定休)<br>
+ <strong>場所:</strong> ◯◯市中央◯丁目 雑居ビル2F<br>
+ <strong>時給:</strong> 1,100円〜(経験不問・研修あり)</p>
+ <p>ママひとりではお酒を作るので精一杯になってしまいました。<br>明るくて、人の話を聞くのが好きな方。一緒に働いてくれませんか。</p>
+ <p>常連さんの席はそのままにしてあります。</p>
+ <p style="font-size:11px;color:#6b6b60;">お問い合わせはお店まで直接お越しください ｜ © スナックこよい</p>`
+}
+],
+
+/* --- ヒント(認定3連続失敗ごとに1本) --- */
+hints:[
+ {no:173, date:"2026/01/20(火) 00:05:18.72", uid:"Hn6yT2sK", body:"流れ読まずに書くが\n「誰の一撃で死んだか」と「どの行為が罪になるか」は別の問いだからな\n混ぜてる奴が多い"},
+ {no:174, date:"2026/01/20(火) 00:18:46.30", uid:"Hn6yT2sK", body:"あと0:23〜0:47の24秒と「舐めてんのか」な\n踏んだ時、あれはもう「防衛の意思」だったのか?\n六法の36条の注釈あたり読み直せ"}
+],
+
+/* --- 六法 --- */
+laws:[
+{art:"刑法 第36条({tok:w_seito:正当防衛})", txt:"第1項　急迫不正の侵害に対して、自己又は他人の権利を{tok:w_boei:防衛}するため、やむを得ずにした行為は、罰しない。\n第2項　防衛の程度を超えた行為は、情状により、その刑を減軽し、又は免除することができる。",
+ note:"2項がいわゆる「{tok:w_kajo:過剰防衛}」。ただし、防衛の意思を失い、専ら{tok:w_kougeki:攻撃}の意思で加えた暴行は、もはや「防衛の程度を超えた」とすら言えず、過剰防衛にもならない——ただの犯罪として扱われる。"},
+{art:"刑法 第204条({tok:w_shogai:傷害})", txt:"人の身体を傷害した者は、十五年以下の拘禁刑又は五十万円以下の罰金に処する。",
+ note:"2025年6月の改正刑法施行により「懲役」は「拘禁刑」に一本化された。"},
+{art:"刑法 第205条({tok:w_chishi:傷害致死})", txt:"身体を傷害し、よって人を死亡させた者は、三年以上の有期拘禁刑に処する。",
+ note:"傷害の結果、人が死ねばこの罪。ただし「その傷害によって」死んだこと(因果関係)が必要。殺意があれば{tok:w_satsujin:殺人}罪(199条)。"},
+{art:"刑法 第37条({tok:w_kinkyuhinan:緊急避難})", txt:"第1項　自己又は他人の生命、身体、自由又は財産に対する現在の危難を避けるため、やむを得ずにした行為は、これによって生じた害が避けようとした害の程度を超えなかった場合に限り、罰しない。ただし、その程度を超えた行為は、情状により、その刑を減軽し、又は免除することができる。",
+ note:"正当防衛(36条)が「不正な侵害への反撃」なのに対し、こちらは「危難からの回避」。人に向かうか、危険から逃れるかの違い。"}
+],
+
+/* --- 認定v2: 採取プール+穴埋め --- */
+tokens:[
+ {id:"w_mashiba", label:"真柴圭吾"},
+ {id:"w_uno", label:"宇野"},
+ {id:"w_haizara", label:"スタンド灰皿"},
+ {id:"w_bin", label:"ビール瓶"},
+ {id:"w_deisui", label:"泥酔"},
+ {id:"w_tentou", label:"転倒"},
+ {id:"w_ugokanai", label:"動かない"},
+ {id:"w_fumi", label:"踏みつけ"},
+ {id:"w_seito", label:"正当防衛"},
+ {id:"w_kajo", label:"過剰防衛"},
+ {id:"w_kougeki", label:"攻撃"},
+ {id:"w_shogai", label:"傷害"},
+ {id:"w_chishi", label:"傷害致死"},
+ {id:"w_satsujin", label:"殺人"},
+ {id:"w_ishikifumei", label:"意識不明"},
+ {id:"w_kizetsu", label:"気絶"},
+ {id:"w_daboku", label:"打撲"},
+ {id:"w_boei", label:"防衛"},
+ {id:"w_kinkyuhinan", label:"緊急避難"}
+],
+statement:[
+ {t:"先に手を出したのは "},{slot:"s1"},{t:" であり、殴りかかった上で "},{slot:"s2"},{t:" を投げつけている。\n\nこれに対する宇野の最初の一撃は "},{slot:"s3"},{t:" に当たり、罰せられない。死の結果も、この一撃による "},{slot:"s4"},{t:" から生じたものである。\n\nしかし、相手が "},{slot:"s5"},{t:" ことを認識した後の踏みつけは、専ら "},{slot:"s6"},{t:" の意思に基づくもので、最初の一撃との間には断絶がある。\n\nよって宇野の行為は "},{slot:"s7"},{t:" 罪に当たる。死の結果について、罪に問われる者はいない。"}
+],
+slots:{
+ s1:{accept:"w_mashiba"}, s2:{accept:"w_haizara"}, s3:{accept:"w_seito"},
+ s4:{accept:"w_tentou"}, s5:{accept:"w_ugokanai"}, s6:{accept:"w_kougeki"}, s7:{accept:"w_shogai"}
+},
+lie:{
+ prompt:"最後に——弁解録取書の中の決定的な嘘を、それを崩す証拠の一文とセットで突きつけよ。",
+ answer:"un3",
+ proofs:["vd4","vd5","kt3"],
+ btnLabel:"① 嘘を指す → ② 反証を突きつける",
+ targetPage:"st_uno"
+},
+
+sentence:{max:10, real:"拘禁刑2年・執行猶予4年"},
+
+/* --- ボーナス: ガセ特定 --- */
+gase:{
+ label:"ボーナス認定: 本スレ(134〜172)のうち「事実に反するガセ」を流したレスを全て選べ",
+ candidates:[137,140,143,156,164],
+ answers:[137,140],
+ explain:"137(ビール瓶)と140(反社の金持ち逃げ)がガセ。しかも同一ID:qW7zN3vB——ひとりの煽り屋が続けて流していた。143(スナックでの投資の怒鳴り声)は「妄想乙」と笑われたが真実。156は資料の素直な読み、164は口は悪いが「音声の主が確定できない」という指摘自体は正当で、どちらも捏造ではない。"
+},
+
+/* --- リザルト: 判決スレ --- */
+verdictThread:{
+ title:"【◯◯市】雑居ビル前死亡事件、判決【傷害罪のみ】",
+ url:"http://bbs.akashiya.jp/test/read.cgi/newsura/1782457844/",
+ posts:[
+  {no:1, date:"2026/06/26(金) 16:10:44.28", uid:"Tz5cW8bN", body:"◯◯地裁、宇野被告に拘禁刑2年・執行猶予4年\n罪名は傷害罪。死亡させた点については正当防衛で無罪\n夕方のニュースでやる"},
+  {no:2, date:"2026/06/26(金) 16:13:20.91", uid:"pJ4gM7eV", body:"は?\n人死んでるのに傷害罪?"},
+  {no:3, date:"2026/06/26(金) 16:16:05.47", uid:"Xd2nB6kA", body:"整理すると判決はこう\n・死因になった一撃→正当防衛。罪にならない\n・その後の踏みつけ→防衛じゃなくただの攻撃。でも死因と無関係\n・つまり「死」は誰の罪でもない。踏んだ分の傷害罪だけが残った"},
+  {no:4, date:"2026/06/26(金) 16:19:38.12", uid:"pJ4gM7eV", body:"&gt;&gt;3\n理屈は分かる\n理屈は分かるが遺族はどうなるんだよこれ"},
+  {no:5, date:"2026/06/26(金) 16:23:52.80", uid:"mR9sF3wH", body:"いや宇野が気の毒だろ\nいきなり殴られて灰皿投げられて、よけて一発返しただけだぞ\nそれで人生終わるなら誰も身を守れん"},
+  {no:6, date:"2026/06/26(金) 16:27:14.55", uid:"pJ4gM7eV", body:"&gt;&gt;5\n24秒黙って見下ろしてから「舐めてんのか」つって踏んだ男だぞ\n気の毒で済ますな"},
+  {no:7, date:"2026/06/26(金) 16:31:47.03", uid:"eK7uD1qY", body:"どっちも常連だった店のママさん、判決の日も店閉めたままらしいよ\n悪い人はいなかったのよって、それだけ言ってたけどね"},
+  {no:8, date:"2026/06/26(金) 16:35:29.68", uid:"Xd2nB6kA", body:"&gt;&gt;7\n700万の投資の件が量刑でどう扱われたかは報道じゃ分からんな\n動機の背景としては情状に入ったはずだが"},
+  {no:9, date:"2026/06/26(金) 16:40:11.36", uid:"Tz5cW8bN", body:"執行猶予には遺族側の処罰感情も踏まえた上でこれ、と\n裁判官も相当悩んだ書きぶりらしい"},
+  {no:10, date:"2026/06/26(金) 16:44:58.14", uid:"PLAYER", body:""},
+  {no:11, date:"2026/06/26(金) 16:48:33.71", uid:"mR9sF3wH", body:"&gt;&gt;10\n傍聴組か、乙\nお前はあの24秒をどう見たんだ、って話だよな結局"},
+  {no:12, date:"2026/06/26(金) 16:53:07.49", uid:"pJ4gM7eV", body:"殴った罪は裁けて、死なせたことは誰の罪でもない\n法律ってそういうもんかよ"},
+  {no:13, date:"2026/06/26(金) 16:57:40.25", uid:"eK7uD1qY", body:"そういうもんよ\nそれでも裁判所は理屈を通すの。通さなかったら次は私たちが困るんだから"},
+  {no:14, date:"2026/06/26(金) 17:02:19.83", uid:"wU7kE3fN", aa:true, body:"　　　　；\n　　＼　；　／\n　　／￣￣￣＼＿＿＿\n　 |　 ●　　　　　　 ＼　　＜ 事件は終わらせてやらんとな\n　　＼＿＿＿＿＿＿＿_ノ\n～～～～～～～～～～～～～"},
+  {no:15, date:"2026/06/26(金) 17:05:51.60", uid:"pJ4gM7eV", body:"&gt;&gt;14\n出たな鯨\nこのAA見ると終わったって気にさせられるのが腹立つわ\n&gt;&gt;1乙 みんな乙"}
+ ],
+ playerPostTemplate:"傍聴してきた\n俺が裁判官なら {SENTENCE} にしてたわ\nあの24秒の間、あいつが何を考えてたのかは、最後まで分からなかった"
+},
+
+explanation:"真柴はいきなり殴りかかり、かわされるとスタンド灰皿を投げつけた(急迫不正の侵害)。宇野の一撃はこれに対する正当防衛で、真柴は転倒して後頭部を強打——死因はこの転倒であり、正当防衛による結果だから罪にならない。しかし宇野は、真柴が動かないのを24秒間見下ろした後、「舐めてんのか」と言って腹部を3回踏みつけた。これは防衛の意思を失った専ら攻撃の意思による暴行で、最初の一撃との間には断絶があり、過剰防衛ですらない——独立した傷害罪(肋骨骨折・脾臓損傷、死因への寄与なし)。弁解録取の「すぐに起き上がってまた襲ってくると思いました」(un3)は、24秒の空白と自身の発言に照らして嘘。ビール瓶(137)と反社(140)は同一IDの煽り屋のガセ。「妄想乙」と笑われた常連の証言(143)が真実だった。背景には投資による700万円の喪失があった(削除された営業日記に痕跡が残る)。",
+
+hanji:"【判旨(実判例〈最決平成20年6月25日〉の趣旨を本件事実に当てはめたもの)】\n「被害者が殴打に及んだ上、スタンド灰皿を投げつけた行為は急迫不正の侵害に当たり、これに対し被告人が被害者の顔面を殴打した第1暴行は、防衛手段として相当性を有し、罰せられない。死亡の結果は第1暴行に起因するものである。しかしながら、被告人は、被害者が転倒して動かなくなり、更なる侵害行為に出る可能性のないことを認識しながら、専ら攻撃の意思に基づいて第2暴行に及んだものであって、第1暴行と第2暴行との間には断絶があるといわざるを得ず、両暴行を全体的に考察して一個の過剰防衛の成立を認めることはできない。第2暴行については、正当防衛はもとより過剰防衛を論ずる余地もなく、傷害罪が成立する。」",
+
+ads:[
+{slot:"thread_top", html:`<span style="color:#888;">あかしやサーバー増強募金のお願い ｜ 板の運営は皆様の善意で成り立っています</span>`},
+{slot:"verdict", html:`<span style="background:#f0eaf8;display:block;padding:4px 8px;border-radius:2px;">スナックこよい 従業員募集(急募) ｜ 営業再開しました。ママひとりでは手が回らなくなりました。明るい方。経験不問。{link:koyoi_web:http://www.snack-koyoi.jp/recruit}</span>`}
+],
+
+finaleAA:{aa:"　　＿＿＿＿＿＿＿\n／　　　　　　　／|\n|￣￣￣￣￣￣￣|　|\n|　閉廷　　　　|　|\n|＿＿＿＿＿＿＿|／\n　　∧＿∧\n　　(　-ω-)　＜ あの24秒だけは、法廷にも映らなかったな\n　　(　つ旦\n　　`u—u´", caption:"CASE 01 — 解決"},
+
+disclaimer:"本事例は公開判例(最高裁平成20年6月25日決定ほか)を参考に構成した架空のものです。登場する人物・団体・地名・店舗はすべて実在しません。"
+};
+var __CHAPTERS__=[];
+var __CASENUM__="01";
+var __KUJIRA__=[];
+var __DEMO__=true;
+var __DEMO_LINK__="#";
+/* ============================================================
+   エンジン(事件データ非依存)
+   ============================================================ */
+
+const tabbar=document.getElementById("tabbar");
+const viewport=document.getElementById("viewport");
+const urlbox=document.getElementById("urlbox");
+document.title="レスの数だけ嘘がある — "+CASE.title;
+
+let failCount=0, hintGiven=0, solved=false;
+const pool=new Set(); /* 採取済みトークン */
+
+/* --- 事件モード: criminal(既定) / civil --- */
+const CASE_MODE=CASE.mode||"criminal";
+const isCivil=CASE_MODE==="civil";
+
+/* --- 章番号(セーブのキー)。ビルド時に注入される。
+   document.title からは拾えない(上の行で CASE.title に上書きしているため) --- */
+const caseNum=(typeof __CASENUM__!=="undefined"&&__CASENUM__)
+  ||((document.title.match(/CASE\s*(\d+)/)||[])[1]||"");
+const caseKey="case"+caseNum;
+
+/* ============================================================
+   SAVE-ADAPTER-BEGIN
+   セーブの永続化アダプタ。CLAUDE.md 絶対ルール2により、
+   localStorage/sessionStorage に触ってよいのは【このブロックの中だけ】。
+   エンジン・ケース・UIの他の場所から直接呼ぶのは禁止(テストN-1が機械検出する)。
+
+   実体は3段。上から順に使えるものを選ぶ:
+     1. bridge      — Electron/Tauri。preload が window.__rusoBridge を注入する
+                      { initial: <前回のセーブ|null>, save(data) }。userData配下のファイルへ
+     2. localStorage— Web版。3章の量刑を7章で参照する等、日をまたぐ記録が要るため
+     3. memory      — 上のどちらも不可(file:// で localStorage が塞がれている等)。
+                      この場合のみ永続性なし
+   ============================================================ */
+const SAVE_KEY="ruso_save_v1";
+function blankSave(){
+  return {sentences:{},settlements:{},cleared:{},achievements:{},sfxVolume:50};
+}
+const saveStore=(function(){
+  /* 1. ラッパのブリッジ */
+  const b=window.__rusoBridge;
+  if(b&&typeof b==="object"&&typeof b.save==="function"){
+    return {kind:"bridge",
+      load(){return (b.initial&&typeof b.initial==="object")?b.initial:null;},
+      save(d){try{b.save(d);}catch(e){}},
+      clear(){try{b.save(blankSave());}catch(e){}}};
+  }
+  /* 2. localStorage(書けるかを実際に試す。file://やプライベートモードでは落ちる) */
+  try{
+    const ls=window.localStorage;
+    const probe=SAVE_KEY+":probe";
+    ls.setItem(probe,"1");ls.removeItem(probe);
+    return {kind:"localStorage",
+      load(){
+        try{
+          const raw=ls.getItem(SAVE_KEY);
+          if(!raw)return null;
+          const o=JSON.parse(raw);
+          return (o&&typeof o==="object")?o:null;
+        }catch(e){return null;} /* 壊れていたら新規スタート扱い。起動は止めない */
+      },
+      save(d){try{ls.setItem(SAVE_KEY,JSON.stringify(d));}catch(e){}},
+      clear(){try{ls.removeItem(SAVE_KEY);}catch(e){}}};
+  }catch(e){}
+  /* 3. メモリ(永続性なし) */
+  return {kind:"memory",load(){return null;},save(){},clear(){}};
+})();
+/* SAVE-ADAPTER-END */
+
+if(!window.__rusoSave){
+  const initial=saveStore.load();
+  window.__rusoSave=initial?Object.assign(blankSave(),initial):blankSave();
+}
+if(!window.__rusoSave.settlements)window.__rusoSave.settlements={};
+if(!window.__rusoSave.sentences)window.__rusoSave.sentences={};
+if(!window.__rusoSave.cleared)window.__rusoSave.cleared={};
+if(!window.__rusoSave.achievements)window.__rusoSave.achievements={};
+if(window.__rusoSave.sfxVolume==null)window.__rusoSave.sfxVolume=50;
+/* 記録が動いたら永続化 */
+function saveNow(){saveStore.save(window.__rusoSave);}
+/* 履歴のクリア(オプション→全般)。セーブを消して初期状態に戻す。
+   表示設定(音量・ズーム・配色)は「履歴」ではないので残す */
+function resetSave(){
+  const keep={sfxVolume:window.__rusoSave.sfxVolume,zoom:window.__rusoSave.zoom,
+    skin:window.__rusoSave.skin,smoothScroll:window.__rusoSave.smoothScroll};
+  saveStore.clear();
+  window.__rusoSave=Object.assign(blankSave(),keep);
+  saveNow();
+}
+
+/* --- 作中日時(右下の常駐表示)。
+   「いま見ているページの世界内日付」に追随する:
+     スレ     = 最新レスの日付(新着が付けば進む)
+     判決スレ = 判決スレの日付
+     資料     = リンク元スレの現在日付を維持(過去ログの2009年に引きずられない)
+     ホーム   = 挑戦中の章の開始日(スレの最初のレス)
+   ページ切替(タブ移動含む)のたびに更新する --- */
+const gameDateEl=document.getElementById("gameDate");
+function pickDate(dateStr){
+  const m=String(dateStr||"").match(/(\d{4}\/\d{2}\/\d{2}\([日月火水木金土]\))/);
+  return m?m[1]:"";
+}
+const threadPage=CASE.pages.find(p=>p.type==="thread")||CASE.pages[0];
+/* スレの現在日付(新着で進む)と、章の開始日 */
+let threadDate=pickDate(threadPage.posts&&threadPage.posts.length
+  ?threadPage.posts[threadPage.posts.length-1].date:"");
+const chapterStartDate=pickDate(threadPage.posts&&threadPage.posts.length
+  ?threadPage.posts[0].date:"");
+let verdictDate="";
+/* スレに新着が付いたら、スレの現在日付を進める */
+function updateGameDate(dateStr){
+  const d=pickDate(dateStr);
+  if(d&&d>threadDate)threadDate=d;
+}
+/* いま見ているページの日付 */
+function gameDateFor(id){
+  if(id==="home")return chapterStartDate||threadDate;
+  if(id==="verdict")return verdictDate||threadDate;
+  if(id===threadPage.id)return threadDate;
+  /* 資料・過去ログ・404・dev画面 = リンク元スレの現在日付を維持 */
+  return threadDate;
+}
+function renderGameDate(id){
+  gameDateEl.textContent=gameDateFor(id)||"";
+}
+
+/* --- 通知SE層 (WebAudio合成) --- */
+let _sfxCtx=null;
+let _sfxGain=null;
+function _sfxEnsure(){
+  if(_sfxCtx)return _sfxCtx;
+  try{
+    _sfxCtx=new(window.AudioContext||window.webkitAudioContext)();
+    _sfxGain=_sfxCtx.createGain();
+    _sfxGain.connect(_sfxCtx.destination);
+    const vol=(window.__rusoSave&&window.__rusoSave.sfxVolume!=null)?window.__rusoSave.sfxVolume:50;
+    _sfxGain.gain.value=vol/100;
+  }catch(e){_sfxCtx=null;}
+  return _sfxCtx;
+}
+function _sfxSetVolume(v){
+  if(window.__rusoSave)window.__rusoSave.sfxVolume=v;
+  if(_sfxGain)_sfxGain.gain.value=v/100;
+  saveNow();
+}
+
+/* 音色定義: 各関数は (ctx, dest, t0) を受け取りノードを鳴らす */
+const sfxDefs={
+  /* newpost: 「ピロン」二音上昇 E5→A5, 柔らかいサイン波 */
+  newpost(ctx,dest,t0){
+    const notes=[659.25,880]; /* E5, A5 */
+    notes.forEach((f,i)=>{
+      const o=ctx.createOscillator();o.type="sine";o.frequency.value=f;
+      const g=ctx.createGain();
+      const start=t0+i*0.1;
+      g.gain.setValueAtTime(0,start);
+      g.gain.linearRampToValueAtTime(0.18,start+0.01);
+      g.gain.exponentialRampToValueAtTime(0.001,start+0.18);
+      o.connect(g);g.connect(dest);
+      o.start(start);o.stop(start+0.2);
+    });
+  },
+  /* collect: 短い高いチック 50ms */
+  collect(ctx,dest,t0){
+    const o=ctx.createOscillator();o.type="sine";o.frequency.value=1200;
+    const g=ctx.createGain();
+    g.gain.setValueAtTime(0,t0);
+    g.gain.linearRampToValueAtTime(0.12,t0+0.005);
+    g.gain.exponentialRampToValueAtTime(0.001,t0+0.05);
+    o.connect(g);g.connect(dest);
+    o.start(t0);o.stop(t0+0.06);
+  },
+  /* unlock: 落ち着いた二音 C5→E5, ゆっくり */
+  unlock(ctx,dest,t0){
+    const notes=[523.25,659.25]; /* C5, E5 */
+    notes.forEach((f,i)=>{
+      const o=ctx.createOscillator();o.type="sine";o.frequency.value=f;
+      const g=ctx.createGain();
+      const start=t0+i*0.14;
+      g.gain.setValueAtTime(0,start);
+      g.gain.linearRampToValueAtTime(0.15,start+0.015);
+      g.gain.exponentialRampToValueAtTime(0.001,start+0.22);
+      o.connect(g);g.connect(dest);
+      o.start(start);o.stop(start+0.25);
+    });
+  },
+  /* success: 温かい和音 C5+E5 同時, 長め */
+  success(ctx,dest,t0){
+    [523.25,659.25].forEach(f=>{
+      const o=ctx.createOscillator();o.type="sine";o.frequency.value=f;
+      const g=ctx.createGain();
+      g.gain.setValueAtTime(0,t0);
+      g.gain.linearRampToValueAtTime(0.14,t0+0.02);
+      g.gain.exponentialRampToValueAtTime(0.001,t0+0.4);
+      o.connect(g);g.connect(dest);
+      o.start(t0);o.stop(t0+0.42);
+    });
+  },
+  /* fail: 低い柔らかい単音 A3, 短め */
+  fail(ctx,dest,t0){
+    const o=ctx.createOscillator();o.type="sine";o.frequency.value=220;
+    const g=ctx.createGain();
+    g.gain.setValueAtTime(0,t0);
+    g.gain.linearRampToValueAtTime(0.15,t0+0.01);
+    g.gain.exponentialRampToValueAtTime(0.001,t0+0.18);
+    o.connect(g);g.connect(dest);
+    o.start(t0);o.stop(t0+0.2);
+  }
+};
+
+function playSfx(event){
+  const def=sfxDefs[event];
+  if(!def)return;
+  const ctx=_sfxEnsure();
+  if(!ctx)return;
+  if(ctx.state==="suspended")ctx.resume();
+  try{def(ctx,_sfxGain,ctx.currentTime);}catch(e){}
+}
+
+/* --- 実績フラグ記録 --- */
+function recordAchievement(key){
+  window.__rusoSave.achievements[key]=true;
+  saveNow();
+}
+
+/* --- フィーチャーフラグ(既定OFF)。
+   採否が未定の演出はここで殺しておく。QAは about:flags か、読み込み前に
+   window.__rusoFlags={finalRecognition:true} を置けばON。
+   毎回読み直すので、実行中にトグルしても効く --- */
+const FEATURE_FLAGS=["finalRecognition","ending","unlockAll"];
+const FLAG_LABELS={unlockAll:"全章解放(ホームに全ての章を出す)"};
+function flagOn(name){
+  return !!(window.__rusoFlags&&window.__rusoFlags[name]===true);
+}
+
+/* --- toast(右上付箋スタック) --- */
+const toastStack=document.getElementById("toastStack");
+function showToast(msg){
+  const t=document.createElement("div");
+  t.className="toast";t.textContent=msg;
+  toastStack.appendChild(t);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>t.classList.add("show")));
+  setTimeout(()=>{
+    t.classList.remove("show");t.classList.add("hide");
+    t.addEventListener("transitionend",()=>t.remove(),{once:true});
+    setTimeout(()=>t.remove(),500); /* fallback */
+  },2600);
+}
+
+/* --- {link:pageId:URL文字列} 記法 --- */
+function parseLinks(s){
+  return s.replace(/\{link:([^:]+):([^}]+)\}/g,
+    (_,id,url)=>`<span class="ulink" data-open="${id}">${url}</span>`);
+}
+/* --- {tok:id:表示語} = 採取可能な語 --- */
+function parseToks(s){
+  return s.replace(/\{tok:([^:]+):([^}]+)\}/g,
+    (_,id,word)=>{
+      const got=pool.has(id)?" got":"";
+      return `<span class="tok${got}" data-tok="${id}">${word}</span>`;
+    });
+}
+/* --- {sent:id:文} = 指摘可能な一文 --- */
+function parseSents(s){
+  return s.replace(/\{sent:([^:]+):((?:[^{}]|\{tok:[^}]+\}|\{link:[^}]+\})*)\}/g,
+    (_,id,inner)=>`<span class="sent" data-sid="${id}">${inner}</span>`);
+}
+/* --- &gt;&gt;アンカー = レスポップアップ --- */
+function parseAnchors(s){
+  return s.replace(/&gt;&gt;(\d+)/g,(_,no)=>`<span class="anc" data-anc="${no}">&gt;&gt;${no}</span>`);
+}
+function pipeline(s){ return parseAnchors(parseLinks(parseToks(parseSents(s)))); }
+
+/* --- レス描画 --- */
+function renderPost(p,isNew=false){
+  const body=p.aa?`<div class="aa">${p.body}</div>`:`<div class="pb">${pipeline(p.body)}</div>`;
+  const qb=p.aa?"":`<span class="qbtn" data-quote="${p.no}">ﾉｰﾄへ</span>`;
+  const name=p.name||"名無しの傍聴人";
+  return `<div class="post${isNew?" newpost":""}" data-no="${p.no}"><div class="ph"><span>${p.no}</span> ：<span class="pn">${name}</span>：<span class="pd">${p.date}</span> <span class="pid">ID:${p.uid}</span></div>${body}${qb}</div>`;
+}
+
+/* --- 過去ログのレス(旧UI)。現行スレと同じ内部構造(.post/.ph/.pb/.qbtn)を保つので
+       ノート引用も >>アンカーのポップアップもそのまま効く --- */
+function renderKakoPost(p){
+  const name=p.name||"名無しさん";
+  return `<div class="post kako-post" data-no="${p.no}"><div class="ph">${p.no} 名前：<span class="pn">${name}</span> 投稿日：<span class="pd">${p.date}</span> <span class="pid">ID:${p.uid}</span></div><div class="pb">${pipeline(p.body)}</div><span class="qbtn" data-quote="${p.no}">ﾉｰﾄへ</span></div>`;
+}
+
+/* --- タブ/ページ --- */
+/* ホームと本スレのタブは固定(閉じられない) */
+const pinnedTabs=["home",CASE.pages[0].id];
+const isPinned=id=>pinnedTabs.indexOf(id)>-1;
+
+function makeTab(id,label){
+  const t=document.createElement("div");
+  t.className="btab";t.dataset.target=id;
+  const span=document.createElement("span");
+  span.className="btab-label";span.textContent=label;
+  t.appendChild(span);
+  t.onclick=(e)=>{if(!e.target.classList.contains("btab-close"))activate(id);};
+  if(!isPinned(id)){
+    const x=document.createElement("button");
+    x.className="btab-close";x.textContent="×";x.title="閉じる";
+    x.onclick=(e)=>{e.stopPropagation();closeTab(id);};
+    t.appendChild(x);
+  }
+  /* --- ドラッグ並び替え(pointerイベント、PCのみ) --- */
+  t.addEventListener("pointerdown",dragStart);
+  tabbar.appendChild(t);
+  return t;
+}
+
+function closeTab(id){
+  const tab=document.querySelector(`.btab[data-target="${id}"]`);
+  if(!tab)return;
+  const isActive=tab.classList.contains("active");
+  if(isActive){
+    /* 左隣→右隣の順でアクティブ移譲 */
+    const tabs=[...tabbar.querySelectorAll(".btab")];
+    const idx=tabs.indexOf(tab);
+    const next=tabs[idx-1]||tabs[idx+1];
+    if(next)activate(next.dataset.target);
+  }
+  tab.remove();
+}
+
+/* リザルトタブの見出し(刑事=判決、民事=和解)。ケース側の tab 指定があればそれを優先 */
+function verdictTabLabel(){
+  return CASE.verdictThread.tab||(isCivil?"和解スレ":"【速報】判決出る");
+}
+function ensureTab(id){
+  /* タブが閉じられていたら再生成 */
+  if(document.querySelector(`.btab[data-target="${id}"]`))return;
+  const pg=CASE.pages.find(p=>p.id===id);
+  const label=pg?pg.tab:(id==="home"?"ホーム":(id==="verdict"?verdictTabLabel():id));
+  makeTab(id,label);
+}
+
+/* --- ドラッグ並び替え(カーソル追従+スロット開き) --- */
+let dragState=null;
+function dragStart(e){
+  if(e.pointerType==="touch")return;
+  const tab=e.target.closest(".btab");
+  if(!tab||e.target.classList.contains("btab-close"))return;
+  e.preventDefault();
+  const r=tab.getBoundingClientRect();
+  dragState={tab,startX:e.clientX,offsetX:e.clientX-r.left,offsetY:e.clientY-r.top,
+    ghost:null,moved:false};
+  document.addEventListener("pointermove",dragMove);
+  document.addEventListener("pointerup",dragEnd);
+}
+function dragMove(e){
+  if(!dragState)return;
+  const ds=dragState;
+  if(!ds.moved&&Math.abs(e.clientX-ds.startX)<5)return;
+  if(!ds.moved){
+    ds.moved=true;
+    const r=ds.tab.getBoundingClientRect();
+    ds.ghost=ds.tab.cloneNode(true);
+    ds.ghost.className="btab drag-ghost";
+    if(ds.tab.classList.contains("active"))ds.ghost.classList.add("active");
+    ds.ghost.style.width=r.width+"px";
+    ds.ghost.style.height=r.height+"px";
+    document.body.appendChild(ds.ghost);
+    ds.tab.classList.add("drag-src");
+  }
+  /* ゴーストをブラウザ枠内にクランプ */
+  const br=document.getElementById("browser").getBoundingClientRect();
+  const gw=parseFloat(ds.ghost.style.width)||0;
+  const gh=parseFloat(ds.ghost.style.height)||0;
+  const gx=Math.max(br.left,Math.min(e.clientX-ds.offsetX,br.right-gw));
+  const gy=Math.max(br.top,Math.min(e.clientY-ds.offsetY,br.top+60));
+  ds.ghost.style.left=gx+"px";
+  ds.ghost.style.top=gy+"px";
+  /* 他タブの中点と比較して挿入位置を決定 */
+  const tabs=[...tabbar.querySelectorAll(".btab:not(.drag-src)")];
+  let target=null;
+  for(const t of tabs){
+    const tr=t.getBoundingClientRect();
+    if(e.clientX<tr.left+tr.width/2){target=t;break;}
+  }
+  if(target){
+    if(ds.tab.nextSibling!==target)tabbar.insertBefore(ds.tab,target);
+  }else{
+    if(ds.tab!==tabbar.lastElementChild)tabbar.appendChild(ds.tab);
+  }
+}
+function dragEnd(){
+  if(!dragState)return;
+  const ds=dragState;
+  if(ds.ghost)ds.ghost.remove();
+  ds.tab.classList.remove("drag-src");
+  document.removeEventListener("pointermove",dragMove);
+  document.removeEventListener("pointerup",dragEnd);
+  dragState=null;
+}
+/* --- 履歴(戻る/進む)+タブごとのスクロール位置記憶 --- */
+const hist={stack:[],pos:-1};
+const scrollMem={};
+let currentPageId=null;
+function activate(id,fromHist=false){
+  if(currentPageId!==null)scrollMem[currentPageId]=viewport.scrollTop;
+  if(id!=="e404"&&id!=="devsave"&&id!=="devflags")ensureTab(id); /* 閉じたタブを履歴ナビで復活 */
+  document.querySelectorAll(".btab").forEach(t=>{
+    t.classList.toggle("active",t.dataset.target===id);
+    if(t.dataset.target===id)t.classList.remove("new");
+  });
+  if(id==="home")renderHome(); /* クリア状況が変わっている可能性があるので毎回描き直す */
+  document.querySelectorAll(".page").forEach(p=>p.classList.toggle("active",p.id==="pg_"+id));
+  viewport.scrollTop=scrollMem[id]||0;
+  currentPageId=id;
+  renderGameDate(id); /* 常駐日時はいま見ているページの世界内日付に追随する */
+  if(id==="e404"){
+    urlbox.value=last404url;
+  }else if(id==="devsave"){
+    urlbox.value="about:save";
+  }else if(id==="devflags"){
+    urlbox.value="about:flags";
+  }else{
+    const pg=CASE.pages.find(p=>p.id===id)
+      ||(id==="verdict"?{url:CASE.verdictThread.url}:null)
+      ||(id==="home"?{url:HOME_URL}:null);
+    urlbox.value=pg?pg.url:"about:blank";
+  }
+  if(!fromHist && hist.stack[hist.pos]!==id){
+    hist.stack=hist.stack.slice(0,hist.pos+1);
+    hist.stack.push(id);
+    hist.pos++;
+  }
+  updateNavBtns();
+}
+function goBack(){ if(hist.pos>0){hist.pos--;activate(hist.stack[hist.pos],true);} }
+function goFwd(){ if(hist.pos<hist.stack.length-1){hist.pos++;activate(hist.stack[hist.pos],true);} }
+function updateNavBtns(){
+  document.getElementById("btnBack").classList.toggle("dead",hist.pos<=0);
+  document.getElementById("btnFwd").classList.toggle("dead",hist.pos>=hist.stack.length-1);
+}
+
+/* --- URL直打ちナビゲーション --- */
+function normUrl(u){
+  return u.trim().toLowerCase()
+    .replace(/^https?:\/\//,"")
+    .replace(/^www\./,"")
+    .replace(/\/+$/,"");
+}
+let last404url="";
+function openPage(pg){
+  if(pg.locked){
+    pg.locked=false;
+    const t=makeTab(pg.id,pg.tab);
+    t.classList.add("new");
+    playSfx("unlock");
+    if(pg.hidden||pg.unlisted)recordAchievement("hidden_"+pg.id);
+    if(pg.onOpen&&pg.onOpen.threadPosts){
+      setTimeout(()=>{appendThread(pg.onOpen.threadPosts);showToast("スレに新着レスがある");},1600);
+    }
+  } else {
+    ensureTab(pg.id); /* 閉じられていたタブを復活 */
+  }
+  activate(pg.id);
+}
+function navigateUrl(raw){
+  if(!raw.trim())return;
+  const n=normUrl(raw);
+  if(n==="about:blank"||n==="")return;
+  if(n==="about:debug"){ /* QA用: 正解を自動記入 */
+    Object.keys(CASE.slots).forEach(s=>{judgeState.fill[s]=CASE.slots[s].accept;pool.add(CASE.slots[s].accept);});
+    judgeState.lieSel=CASE.lie.answer;
+    judgeState.proofSel=(CASE.lie.proofs||[])[0]||null;
+    renderJudge();
+    document.getElementById("ov_judge").classList.add("open");
+    showToast("デバッグ: 正解を記入した(提出は手動)");
+    return;
+  }
+  if(n==="about:save"){ /* QA用: セーブデータ(実績・クリア・量刑・和解)の一覧。dev専用 */
+    renderDevSave();
+    activate("devsave");
+    return;
+  }
+  if(n==="about:flags"){ /* QA用: フィーチャーフラグの切り替え。dev専用 */
+    renderDevFlags();
+    activate("devflags");
+    return;
+  }
+  const pg=CASE.pages.find(p=>normUrl(p.url)===n);
+  if(pg){ openPage(pg); return; }
+  if(normUrl(CASE.verdictThread.url)===n && document.getElementById("pg_verdict")){ activate("verdict"); return; }
+  /* ホーム(ケース側に同じURLの隠しページがある場合はそちらが優先=URL削りの仕掛けを殺さない) */
+  if(n===normUrl(HOME_URL)){ renderHome(); activate("home"); return; }
+  /* 404 */
+  last404url=raw.trim();
+  document.getElementById("pg_e404").querySelector(".e404url").textContent=last404url;
+  activate("e404");
+}
+urlbox.addEventListener("keydown",e=>{
+  if(e.key==="Enter"){ navigateUrl(urlbox.value); urlbox.blur(); }
+});
+
+/* 404ページ(タブなし・世界内) */
+(function(){
+  const el=document.createElement("div");
+  el.className="page";el.id="pg_e404";
+  el.innerHTML=`<div class="newspage" style="text-align:center;">
+    <div class="news-h" style="font-size:26px;">404 Not Found</div>
+    <p style="font-family:Consolas,Menlo,monospace;font-size:12px;color:#6b6b60;word-break:break-all;" class="e404url"></p>
+    <p>お探しのページは削除されたか、最初から存在しません。</p>
+    <div class="aa" style="display:inline-block;text-align:left;">　（´・ω・｀）\n　（　つ　旦\n　と＿）＿）　…見つからんかったか</div>
+    <p style="font-size:11px;color:#6b6b60;">あかしやネットサービス</p>
+  </div>`;
+  viewport.appendChild(el);
+})();
+/* 広告は板の広告枠(世界内の存在)。2形式を受ける:
+   旧 {slot, html} — HTMLを直接書く
+   新 {site, text} — 素のテキスト(改行はそのまま)
+   slot省略時は "verdict" = 判決/和解スレのページ内(case02の広告と同じ位置)に出す */
+function adSlotOf(ad){return ad.slot||"verdict";}
+function adBodyOf(ad){
+  if(ad.html!=null)return pipeline(ad.html);
+  const site=ad.site?`<div class="ad-site">${ad.site}</div>`:"";
+  return `${site}<div class="ad-text">${pipeline(ad.text||"")}</div>`;
+}
+/* --- about:save — セーブデータの一覧(開発者用。タブなし・履歴なし)
+       プレイヤー向けの実績UIではない。QAが記録の中身を目視するための素の表示 --- */
+(function(){
+  const el=document.createElement("div");
+  el.className="page";el.id="pg_devsave";
+  viewport.appendChild(el);
+})();
+function renderDevSave(){
+  const S=window.__rusoSave;
+  const rows=o=>{
+    const keys=Object.keys(o||{});
+    if(!keys.length)return `<tr><td colspan="2" class="dev-empty">(なし)</td></tr>`;
+    return keys.sort().map(k=>{
+      const v=o[k];
+      const txt=(v!==null&&typeof v==="object")?JSON.stringify(v,null,1):String(v);
+      return `<tr><th>${k}</th><td>${txt.replace(/&/g,"&amp;").replace(/</g,"&lt;")}</td></tr>`;
+    }).join("");
+  };
+  const table=(title,o)=>`<h3>${title} <span class="dev-count">${Object.keys(o||{}).length}</span></h3>
+    <table class="dev-table">${rows(o)}</table>`;
+  document.getElementById("pg_devsave").innerHTML=`<div class="devpage">
+    <div class="dev-head">about:save — セーブデータ(開発者用)</div>
+    <div class="dev-meta">この章: ${caseKey} / mode: ${CASE_MODE}　|　保存先: <strong>${saveStore.kind}</strong>${saveStore.kind==="memory"?"(この環境では永続化されない)":""}</div>
+    ${table("achievements(実績フラグ)",S.achievements)}
+    ${table("cleared(クリア章)",S.cleared)}
+    ${table("sentences(量刑・刑事)",S.sentences)}
+    ${table("settlements(和解配分・民事)",S.settlements)}
+    <h3>その他</h3>
+    <table class="dev-table"><tr><th>sfxVolume</th><td>${S.sfxVolume}</td></tr></table>
+    <div class="dev-foot">about:debug = 正解の自動記入 / about:save = この画面</div>
+  </div>`;
+}
+
+/* ============================================================
+   ホーム(あかしや掲示板トップ)。本物のブラウザの中のページとして出す。
+   チャプター解放は進行式:
+     ★注目スレッド = いま挑戦できる章(=クリア済みでない最初の章。初期はCASE 01)
+     履歴          = クリア済みの章だけ(再プレイ可・訪問済みの紫)
+   未クリアの先の章はホームに一切出さない(履歴に未来は存在しない)。
+   解放判定は保存アダプタの cleared から。about:flags の「全章解放」でdev解放できる。
+   ============================================================ */
+const HOME_URL="http://bbs.akashiya.jp/";
+function allChapters(){
+  return (typeof __CHAPTERS__!=="undefined"&&__CHAPTERS__)?__CHAPTERS__:[];
+}
+function isCleared(num){ return !!window.__rusoSave.cleared["case"+num]; }
+/* いま挑戦できる章。全章クリア済みなら最後の章 */
+function currentChapter(){
+  const cs=allChapters();
+  if(!cs.length)return null;
+  return cs.find(c=>!isCleared(c.num))||cs[cs.length-1];
+}
+function clearedChapters(){ return allChapters().filter(c=>isCleared(c.num)); }
+/* ホームに出す「挑戦できる章」。devの全章解放ならすべて */
+function openChapters(){
+  const cs=allChapters();
+  if(!cs.length)return [];
+  if(flagOn("unlockAll"))return cs;
+  const cur=currentChapter();
+  return cur?[cur]:[];
+}
+(function(){
+  const el=document.createElement("div");
+  el.className="page";el.id="pg_home";
+  viewport.appendChild(el);
+})();
+function renderHome(){
+  const cs=allChapters();
+  const cur=currentChapter();
+  const cleared=clearedChapters();
+
+  /* 注目スレッド。いま開いているファイルがその章なら、リンクではなくスレを開く */
+  const hot=openChapters().map(c=>{
+    const here=c.num===caseNum;
+    const label="CASE "+c.num+"　"+c.title;
+    return here
+      ? `<span class="boot-hot-link" data-open-thread="1">${label}</span>`
+      : `<a class="boot-hot-link" href="${c.file}">${label}</a>`;
+  }).join("");
+  /* 体験版・単体ビルド(章一覧が無い)ではこの章のスレを出す */
+  const hotHTML=hot||`<span class="boot-hot-link" data-open-thread="1">${CASE.title}</span>`;
+
+  const histHTML=cleared.length
+    ? `<div class="boot-history-head">履歴</div>`
+      +cleared.map(c=>`<a class="visited" href="${c.file}">CASE ${c.num}</a>`).join("")
+    : "";
+
+  document.getElementById("pg_home").innerHTML=`<div class="boot-hp">
+    <div class="boot-hp-inner">
+      <div class="boot-hp-head">あかしや掲示板 ｜ トップページ</div>
+      <div class="boot-hp-boards">
+        <span>[ニュース速報(表)]</span><span>[ニュース速報(裏)]</span><span>[事件・裁判]</span><span>[ローカル]</span><span>[雑談]</span><span>[AA長屋]</span>
+      </div>
+      <div class="boot-banner">
+        <div class="boot-banner-title">レスの数だけ嘘がある</div>
+        <div class="boot-banner-sub">presented by あかしやネットサービス</div>
+      </div>
+      <div class="boot-hot">
+        <div class="boot-hot-head">★ 本日の注目スレッド</div>
+        ${hotHTML}
+      </div>
+      <div class="boot-history" id="bootHistory">${histHTML}</div>
+      <div id="bootHomeAd">${renderAd("home")}</div>
+      <div class="boot-footer">${CASE.disclaimer}</div>
+    </div>
+  </div>`;
+  const openThread=document.querySelector('#pg_home [data-open-thread]');
+  if(openThread)openThread.onclick=()=>activate(CASE.pages[0].id);
+  void cs;
+}
+
+/* --- about:flags — フィーチャーフラグの切り替え(開発者用。タブなし) --- */
+(function(){
+  const el=document.createElement("div");
+  el.className="page";el.id="pg_devflags";
+  viewport.appendChild(el);
+})();
+function renderDevFlags(){
+  const rows=FEATURE_FLAGS.map(f=>{
+    const on=flagOn(f);
+    const note=FLAG_LABELS[f]||(CASE[f]?"このケースに定義あり":"このケースには無い");
+    return `<tr><th>${f}</th>
+      <td><label><input type="checkbox" class="flag-cb" data-flag="${f}" ${on?"checked":""}> ${on?"ON":"OFF"}</label>
+      <span class="dev-note">${note}</span></td></tr>`;
+  }).join("");
+  const el=document.getElementById("pg_devflags");
+  el.innerHTML=`<div class="devpage">
+    <div class="dev-head">about:flags — フィーチャーフラグ(開発者用)</div>
+    <div class="dev-meta">既定は全てOFF。採否が未定の演出はここでONにして確認する。<br>
+      ONにした後、その章をクリアし直すと演出が出る(finalRecognitionは判決スレ内、endingは締めAAの後)。</div>
+    <table class="dev-table">${rows}</table>
+    <div class="dev-foot">about:debug = 正解の自動記入 / about:save = セーブ一覧 / about:flags = この画面</div>
+  </div>`;
+  el.querySelectorAll(".flag-cb").forEach(cb=>{
+    cb.onchange=()=>{
+      if(!window.__rusoFlags)window.__rusoFlags={};
+      window.__rusoFlags[cb.dataset.flag]=cb.checked;
+      renderDevFlags();
+      if(cb.dataset.flag==="unlockAll")renderHome(); /* ホームの解放状況に即反映 */
+      showToast("フラグ "+cb.dataset.flag+" を "+(cb.checked?"ON":"OFF")+" にした");
+    };
+  });
+}
+
+function renderAd(slot){
+  const ad=(CASE.ads||[]).find(a=>adSlotOf(a)===slot);
+  if(!ad)return "";
+  return `<div class="ad-slot">${adBodyOf(ad)}<span class="ad-label">AD</span></div>`;
+}
+function buildPage(p){
+  const el=document.createElement("div");
+  el.className="page";el.id="pg_"+p.id;
+  if(p.type==="thread"){
+    el.innerHTML=`<div class="board-head">あかしや掲示板 ＞ ニュース速報(裏) ＞ スレ表示</div>
+      <div class="thread-title">${CASE.title}</div>
+      <div class="thread-sub">${CASE.subtitle}</div>
+      ${renderAd("thread_top")}
+      <div id="threadPosts">${p.posts.map(x=>renderPost(x)).join("")}</div>`;
+  }else if(p.type==="kakolog"){
+    /* 過去ログ倉庫。read-only(書き込みUIは出さない)。
+       レス本文は現行スレと同じく {link:}{tok:}{sent:}{>>アンカー} が効く */
+    el.innerHTML=`<div class="kakolog">
+      <div class="kako-archive">${p.archiveNote||""}</div>
+      <div class="kako-board">あかしや掲示板 過去ログ倉庫</div>
+      <div class="kako-title">${p.oldTitle||""}</div>
+      <div class="kako-posts">${(p.posts||[]).map(renderKakoPost).join("")}</div>
+      <div class="kako-foot">このスレッドは過去ログ倉庫に格納されています。<br>もう書き込むことはできません。</div>
+    </div>`;
+  }else if(p.type==="news"){
+    el.innerHTML=`<div class="newspage"><div class="news-site"><span>${p.site}</span><span>◇</span></div>
+      <div class="news-h">${p.heading}</div>${pipeline(p.html)}</div>`;
+  }else{ /* doc */
+    el.innerHTML=`<div class="docpage"><div class="doc-stamp">${p.stampText}</div>
+      <h3>${p.heading}</h3>${pipeline(p.html)}</div>
+      <div class="uploader-note">up.akashiya.jp — 消える前に保存推奨、と>>スレ民</div>`;
+  }
+  viewport.appendChild(el);
+}
+CASE.pages.forEach(p=>{
+  buildPage(p);
+  if(!p.locked)makeTab(p.id,p.tab);
+});
+
+/* --- スレに新着追加 --- */
+function appendThread(posts){
+  const holder=document.getElementById("threadPosts");
+  posts.forEach(p=>{
+    holder.insertAdjacentHTML("beforeend",renderPost(p,true));
+    updateGameDate(p.date);
+  });
+  const t=document.querySelector('[data-target="thread"]');
+  if(t&&!t.classList.contains("active"))t.classList.add("new");
+  renderGameDate(currentPageId); /* 新着でスレの日付が進むことがある */
+  playSfx("newpost");
+}
+
+/* --- URLクリック=開示 --- */
+viewport.addEventListener("click",e=>{
+  const l=e.target.closest(".ulink");
+  if(l&&l.dataset.open){
+    l.classList.add("visited");
+    const pg=CASE.pages.find(p=>p.id===l.dataset.open);
+    if(pg){
+      if(pg.locked)showToast("新しいタブが開いた: "+pg.tab);
+      openPage(pg);
+    }
+    return;
+  }
+  /* 引用→ノート */
+  const q=e.target.closest(".qbtn");
+  if(q){
+    const post=q.closest(".post");
+    const no=q.dataset.quote;
+    const text=post.querySelector(":scope > .pb").textContent.trim();
+    const memo=document.getElementById("memo");
+    memo.value+=(memo.value?"\n":"")+`>>${no}「${text}」`;
+    showToast(">>"+no+" をノートに引用した");
+  }
+});
+
+/* --- >>アンカーのレスポップアップ --- */
+let popupEl=null;
+function findPostData(no){
+  no=+no;
+  for(const pg of CASE.pages){
+    const p=(pg.posts||[]).find(x=>x.no===no);if(p)return p;
+    if(pg.onOpen&&pg.onOpen.threadPosts){const p2=pg.onOpen.threadPosts.find(x=>x.no===no);if(p2)return p2;}
+  }
+  const h=(CASE.hints||[]).find(x=>x.no===no);if(h)return h;
+  return (CASE.verdictThread.posts||[]).find(x=>x.no===no)||null;
+}
+viewport.addEventListener("mouseover",e=>{
+  const anc=e.target.closest(".anc");
+  if(!anc)return;
+  const p=findPostData(anc.dataset.anc);
+  if(!p)return;
+  if(popupEl){popupEl.remove();popupEl=null;}
+  popupEl=document.createElement("div");
+  popupEl.className="res-popup";
+  const name=p.name||"名無しの傍聴人";
+  popupEl.innerHTML=`<div class="ph"><span>${p.no}</span> ：<span class="pn">${name}</span>：<span class="pd">${p.date}</span></div><div class="${p.aa?"aa":"popup-body"}">${p.aa?p.body:pipeline(p.body)}</div>`;
+  const r=anc.getBoundingClientRect(),vr=viewport.getBoundingClientRect();
+  popupEl.style.left=Math.min(r.left-vr.left,vr.width-470)+"px";
+  popupEl.style.top=(r.bottom-vr.top+viewport.scrollTop+4)+"px";
+  viewport.appendChild(popupEl);
+});
+viewport.addEventListener("mouseout",e=>{
+  const anc=e.target.closest(".anc");
+  if(anc&&popupEl){popupEl.remove();popupEl=null;}
+});
+
+/* --- 道具オーバーレイ --- */
+function toolShell(id,title,inner){
+  const ov=document.getElementById("ov_"+id);
+  ov.innerHTML=`<div class="tool"><div class="tool-head"><h2>${title}</h2><span class="closebtn" data-close="${id}">閉じる ✕</span></div>${inner}</div>`;
+}
+toolShell("laws","六法(収録条文は事件を解くほど増える)",
+  CASE.laws.map(l=>`<div class="law"><h3>${pipeline(l.art)}</h3><div class="txt">${pipeline(l.txt).replace(/\n/g,"<br>")}</div><div class="law-note">※${pipeline(l.note)}</div></div>`).join("")
+  +`<div class="memo-hint">条文中の点線の語も採取できる。</div>`);
+toolShell("note","捜査ノート",
+  `<textarea id="memo" placeholder="矛盾、時系列、仮説、怪しいIDをここに。&#10;レス右上の「ﾉｰﾄへ」で引用が飛ぶ。"></textarea>
+   <div class="memo-hint">※このノートはページを閉じると消える</div>`);
+
+/* ============================================================
+   民事モード: 和解勧告(配分バー + 事実認定トグル)
+   刑事の量刑スライダーと同じ位置に差し込まれる。
+   穴埋め認定・嘘指摘・ガセ認定は刑事と共通のまま。
+   ============================================================ */
+const settleState={toggles:{},alloc:null};
+if(isCivil){
+  (CASE.settlement.toggles||[]).forEach(t=>{settleState.toggles[t.id]=!!t.on;});
+}
+function settleUnit(){return (CASE.settlement&&CASE.settlement.unit)||10000;}
+function partyIds(){return CASE.settlement.parties.map(p=>p.id);}
+function partyName(id){const p=CASE.settlement.parties.find(x=>x.id===id);return p?p.name:id;}
+/* 億・万で読ませる(1億6625万円 / 3375万円) */
+function yen(v){
+  v=Math.round(v);
+  const sign=v<0?"-":"";v=Math.abs(v);
+  const oku=Math.floor(v/100000000),man=Math.floor((v%100000000)/10000),rest=v%10000;
+  let s="";
+  if(oku)s+=oku.toLocaleString("ja-JP")+"億";
+  if(man)s+=man.toLocaleString("ja-JP")+"万";
+  if(rest||!s)s+=rest.toLocaleString("ja-JP");
+  return sign+s+"円";
+}
+
+/* weights比で total を unit刻みに割り付ける(最大剰余法、合計は必ず total に一致) */
+function quantize(total,weights,unit){
+  const n=weights.length;
+  if(!n)return [];
+  const units=Math.max(0,Math.round(total/unit));
+  let w=weights.map(v=>Math.max(0,v));
+  let ws=w.reduce((a,b)=>a+b,0);
+  if(!(ws>0)){w=w.map(()=>1);ws=n;}
+  const raw=w.map(v=>units*v/ws);
+  const base=raw.map(v=>Math.floor(v));
+  const rest=units-base.reduce((a,b)=>a+b,0);
+  const order=raw.map((v,i)=>({i,f:v-base[i]})).sort((a,b)=>b.f-a.f||a.i-b.i);
+  for(let k=0;k<rest;k++)base[order[k%n].i]++;
+  return base.map(v=>v*unit);
+}
+
+/* 法定ガイド値。
+   basis  = 現に分配できる遺産(statutory.basis)。配分バーの合計はここに固定される。
+   deemed = みなし基礎財産(遺留分算定の分母)。ONトグルの amount を足し込む。
+   shares = 法定ガイド値。トグルが shares を明示していればそれを優先し(民1046条2項の
+            控除のように比例計算では出せない非対称値があるため)、無ければ deemed を
+            法定相続分比で割り付けた値を使う。 */
+function statutoryGuide(){
+  const S=CASE.settlement,ids=partyIds(),unit=settleUnit();
+  const basis=Math.max(0,Math.round(S.statutory.basis/unit)*unit);
+  let deemed=S.statutory.basis;
+  let explicit=null;
+  (S.toggles||[]).forEach(t=>{
+    if(!settleState.toggles[t.id])return;
+    deemed+=(t.amount||0);
+    if(t.shares)explicit=Object.assign(explicit||{},t.shares);
+  });
+  deemed=Math.max(0,deemed);
+  const parts=explicit
+    ? ids.map(id=>Math.max(0,Math.round((explicit[id]||0)/unit)*unit))
+    : quantize(basis,ids.map(id=>S.statutory.shares[id]||0),unit);
+  const shares={};ids.forEach((id,i)=>shares[id]=parts[i]);
+  return {basis,deemed,shares};
+}
+function allocTotal(){return partyIds().reduce((a,id)=>a+(settleState.alloc[id]||0),0);}
+
+/* 基礎財産が変わったら、現在の配分比を保ったまま合計を基礎財産に合わせ直す */
+function syncAllocToBasis(){
+  const g=statutoryGuide(),ids=partyIds(),unit=settleUnit();
+  if(!settleState.alloc){settleState.alloc=Object.assign({},g.shares);return g;}
+  const parts=quantize(g.basis,ids.map(id=>settleState.alloc[id]||0),unit);
+  ids.forEach((id,i)=>settleState.alloc[id]=parts[i]);
+  return g;
+}
+/* 1人を動かしたら残りを現在比で吸収(合計=基礎財産に固定) */
+function setAlloc(pid,val){
+  const g=statutoryGuide(),ids=partyIds(),unit=settleUnit();
+  val=Math.min(g.basis,Math.max(0,Math.round(val/unit)*unit));
+  settleState.alloc[pid]=val;
+  const others=ids.filter(id=>id!==pid);
+  if(!others.length){settleState.alloc[pid]=g.basis;return;}
+  const parts=quantize(g.basis-val,others.map(id=>settleState.alloc[id]||0),unit);
+  others.forEach((id,i)=>settleState.alloc[id]=parts[i]);
+}
+function diffLabel(d){return d===0?"法定どおり":(d>0?"＋":"−")+yen(Math.abs(d));}
+function settlementText(){
+  return partyIds().map(id=>partyName(id)+" "+yen(settleState.alloc[id]||0)).join(" / ");
+}
+/* リザルトに刻む文言(刑事=量刑、民事=配分) */
+function outcomeText(){return isCivil?settlementText():sentenceText();}
+
+/* 過去の章で自分が付けた量刑({SENTENCE_CASE03} 等)。未プレイならフォールバック */
+function pastSentence(key){
+  const s=window.__rusoSave.sentences[key];
+  return s||"(記録なし)";
+}
+
+function settlementHTML(){
+  const g=syncAllocToBasis(),unit=settleUnit();
+  const rows=partyIds().map(id=>{
+    const v=settleState.alloc[id]||0,guide=g.shares[id]||0,d=v-guide;
+    const pct=g.basis?v/g.basis*100:0,gp=g.basis?guide/g.basis*100:0;
+    return `<div class="alloc-row" data-party="${id}">
+      <div class="alloc-head"><span class="alloc-name">${partyName(id)}</span>
+        <span class="alloc-val">${yen(v)}</span>
+        <span class="alloc-diff${d?(d>0?" plus":" minus"):""}">${diffLabel(d)}</span></div>
+      <div class="alloc-bar"><div class="alloc-fill" style="width:${pct}%"></div>
+        <div class="alloc-guide" data-guide="${guide}" style="left:${gp}%" title="法定計算値 ${yen(guide)}"></div></div>
+      <input type="range" class="alloc-range" id="alloc_${id}" data-party="${id}" min="0" max="${g.basis}" step="${unit}" value="${v}">
+    </div>`;
+  }).join("");
+  const toggles=(CASE.settlement.toggles||[]).map(t=>
+    `<div class="stg"><label><input type="checkbox" class="stg-cb" id="tg_${t.id}" data-toggle="${t.id}" ${settleState.toggles[t.id]?"checked":""}> ${t.label}</label>
+      <div class="stg-note">${t.recalc}</div></div>`).join("");
+  return `<div class="q settlement" id="settlementPanel">
+    <label class="q-label">和解勧告</label>
+    <div class="settle-lead">裁判官として、双方に和解案を勧告する。配分の合計は分配原資に固定される</div>
+    <div class="stg-head">事実認定</div>
+    <div class="stg-list">${toggles}</div>
+    <div class="alloc-basis">分配原資 <strong id="allocBasis">${yen(g.basis)}</strong>　/　配分の合計 <strong id="allocSum">${yen(allocTotal())}</strong>
+      <span class="alloc-deemed">算定基礎 <strong id="allocDeemed">${yen(g.deemed)}</strong></span></div>
+    ${rows}
+    <div class="alloc-legend">▼ 法定計算値</div>
+  </div>`;
+}
+/* スライダーのドラッグを切らないよう、再描画せず値だけ差し替える */
+function refreshSettlement(){
+  const g=statutoryGuide();
+  partyIds().forEach(id=>{
+    const row=document.querySelector(`.alloc-row[data-party="${id}"]`);
+    if(!row)return;
+    const v=settleState.alloc[id]||0,guide=g.shares[id]||0,d=v-guide;
+    row.querySelector(".alloc-fill").style.width=(g.basis?v/g.basis*100:0)+"%";
+    const gEl=row.querySelector(".alloc-guide");
+    gEl.style.left=(g.basis?guide/g.basis*100:0)+"%";
+    gEl.dataset.guide=guide;
+    gEl.title="法定ガイド "+yen(guide);
+    row.querySelector(".alloc-val").textContent=yen(v);
+    const dEl=row.querySelector(".alloc-diff");
+    dEl.className="alloc-diff"+(d?(d>0?" plus":" minus"):"");
+    dEl.textContent=diffLabel(d);
+    const rg=row.querySelector(".alloc-range");
+    rg.max=g.basis;
+    if(+rg.value!==v)rg.value=v;
+  });
+  const bEl=document.getElementById("allocBasis"),sEl=document.getElementById("allocSum"),dEl=document.getElementById("allocDeemed");
+  if(bEl)bEl.textContent=yen(g.basis);
+  if(sEl)sEl.textContent=yen(allocTotal());
+  if(dEl)dEl.textContent=yen(g.deemed);
+}
+
+/* --- 認定パネル(穴埋め方式) --- */
+function statementHTML(){
+  return CASE.statement.map(seg=>{
+    if(seg.t!==undefined)return seg.t.replace(/\n/g,"<br>");
+    const s=judgeState.fill[seg.slot];
+    const label=s?tokenLabel(s):"　　　　";
+    return `<span class="slot2${s?" filled":""}${judgeState.sel===seg.slot?" sel":""}" data-slot="${seg.slot}">${label}</span>`;
+  }).join("");
+}
+function tokenLabel(id){const t=CASE.tokens.find(x=>x.id===id);return t?t.label:"?";}
+function poolHTML(){
+  const usable=[...pool].filter(id=>!Object.values(judgeState.fill).includes(id));
+  if(pool.size===0)return `<span class="memo-hint">まだ何も採取していない。資料の点線の語をクリックして集めろ。</span>`;
+  return usable.map(id=>`<span class="chip" data-chip="${id}">${tokenLabel(id)}</span>`).join("")
+    ||`<span class="memo-hint">手持ちの語は全て使用中。</span>`;
+}
+const judgeState={fill:{},sel:null,lieSel:null,proofSel:null,pointing:false};
+function sentPreview(sid){
+  const el=document.querySelector(`.sent[data-sid="${sid}"]`);
+  if(!el)return "?";
+  let t=el.textContent.trim();
+  if(t.startsWith("「"))t=t.slice(1);
+  return t.slice(0,24)+"…";
+}
+function renderJudge(){
+  const lieStatus=(judgeState.lieSel?`嘘: <em>「${sentPreview(judgeState.lieSel)}」</em>`:"嘘: まだ指摘していない。")
+    +"　"+(judgeState.proofSel?`反証: <em>「${sentPreview(judgeState.proofSel)}」</em>`:"反証: まだ突きつけていない。");
+  toolShell("judge","事実認定 — 語を穴にはめ、認定文を完成させよ",
+   `<div class="statement" id="stmt">${statementHTML()}</div>
+    <div class="q-label" style="margin-top:14px;">手持ちの語(資料から採取したもの)</div>
+    <div class="pooltray" id="pooltray">${poolHTML()}</div>
+    <div class="q" style="margin-top:16px;"><div class="q-label">${CASE.lie.prompt}</div>
+      <div class="memo-hint" style="margin-bottom:6px;">${lieStatus}</div>
+      <button class="ghost" id="lieBtn">${CASE.lie.btnLabel}</button></div>
+    ${isCivil?settlementHTML():`<div class="q"><label class="q-label">あなたが裁判官なら量刑は(採点対象外・答え合わせ用)</label>
+    <div class="slider-row">
+      <input type="range" id="sentYears" min="0" max="${CASE.sentence.max}" step="0.5" value="${judgeState.years||3}">
+      <span class="sent-val" id="sentLabel"></span>
+      <label class="chk"><input type="checkbox" id="suspended" ${judgeState.susp?"checked":""}> 執行猶予を付ける</label>
+    </div></div>`}
+   <button id="submitBtn" ${solved?"disabled":""}>${isCivil?"この配分で勧告する":"認定を提出する"}</button>
+   <div class="result${judgeState.lastResult?" show":""}" id="resultBox">${judgeState.lastResult||""}</div>`);
+  wireJudge();
+}
+function wireJudge(){
+  const ov=document.getElementById("ov_judge");
+  ov.querySelectorAll(".slot2").forEach(el=>{
+    el.onclick=()=>{
+      const sl=el.dataset.slot;
+      if(judgeState.fill[sl]){delete judgeState.fill[sl];judgeState.sel=null;}
+      else judgeState.sel=(judgeState.sel===sl)?null:sl;
+      renderJudge();
+    };
+  });
+  ov.querySelectorAll(".chip").forEach(el=>{
+    el.onclick=()=>{
+      const id=el.dataset.chip;
+      let target=judgeState.sel;
+      if(!target){ /* 未選択なら最初の空きスロットへ */
+        target=Object.keys(CASE.slots).find(s=>!judgeState.fill[s]);
+      }
+      if(target){judgeState.fill[target]=id;judgeState.sel=null;renderJudge();}
+    };
+  });
+  document.getElementById("lieBtn").onclick=()=>{
+    judgeState.pointing="lie";
+    judgeState.lieSel=null;judgeState.proofSel=null;
+    document.querySelectorAll(".overlay").forEach(o=>o.classList.remove("open"));
+    document.body.classList.add("pointing");
+    const pg=CASE.pages.find(p=>p.id===CASE.lie.targetPage);
+    if(pg&&pg.locked)openPage(pg);else activate(CASE.lie.targetPage);
+    showToast("① 嘘だと思う一文をクリックしろ");
+  };
+  if(isCivil){
+    /* 民事: 配分バー(合計固定)+事実認定トグル。再描画するとスライダーのドラッグが切れるので値だけ更新する */
+    ov.querySelectorAll(".alloc-range").forEach(r=>{
+      r.oninput=()=>{setAlloc(r.dataset.party,+r.value);refreshSettlement();};
+    });
+    ov.querySelectorAll(".stg-cb").forEach(cb=>{
+      cb.onchange=()=>{settleState.toggles[cb.dataset.toggle]=cb.checked;syncAllocToBasis();refreshSettlement();};
+    });
+  }else{
+    const sy=document.getElementById("sentYears"),su=document.getElementById("suspended");
+    const upd=()=>{judgeState.years=sy.value;judgeState.susp=su.checked;
+      document.getElementById("sentLabel").textContent=sentenceText();};
+    sy.oninput=upd;su.onchange=upd;upd();
+  }
+  document.getElementById("submitBtn").onclick=grade;
+}
+
+renderJudge(); /* 初期構築 */
+
+document.getElementById("bookmarkbar").addEventListener("click",e=>{
+  const bm=e.target.closest(".bm");
+  if(!bm)return;
+  document.querySelectorAll(".overlay").forEach(o=>o.classList.remove("open"));
+  document.getElementById("ov_"+bm.dataset.tool).classList.add("open");
+});
+document.addEventListener("click",e=>{
+  const c=e.target.closest(".closebtn");
+  if(c)document.getElementById("ov_"+c.dataset.close).classList.remove("open");
+  else if(e.target.classList.contains("overlay"))e.target.classList.remove("open");
+});
+
+/* ============================================================
+   オプションダイアログ(あかしやブラウザ 2.4)
+   タブ4枚 + [OK][キャンセル][適用]。適用は変更があるまでグレーアウト。
+   「文字のサイズ」5段は画面ズームと同じ状態を共有する(二重の状態を作らない)。
+   ============================================================ */
+/* --- 画面ズーム(文字のサイズ5段と共有) --- */
+const ZOOM_STEPS=[0.8,0.9,1.0,1.25,1.5];
+const ZOOM_LABELS=["最小","小","中","大","最大"];
+function zoomIndex(){
+  const z=window.__rusoSave.zoom;
+  const i=ZOOM_STEPS.indexOf(z);
+  return i>-1?i:ZOOM_STEPS.indexOf(1.0);
+}
+function applyZoom(z){
+  window.__rusoSave.zoom=z;
+  /* Electron はウィンドウごとズーム、Web は CSS ズーム。状態は1つ */
+  const b=window.__rusoBridge;
+  if(b&&typeof b.setZoom==="function"){try{b.setZoom(z);}catch(e){}}
+  else{document.body.style.zoom=z;}
+  saveNow();
+}
+function setZoomIndex(i){
+  const idx=Math.max(0,Math.min(ZOOM_STEPS.length-1,i));
+  applyZoom(ZOOM_STEPS[idx]);
+}
+/* 初回起動: 4Kなど実効幅が広い画面では 1.5 から始める */
+(function(){
+  if(window.__rusoSave.zoom==null){
+    const w=(window.screen&&window.screen.width)||window.innerWidth||0;
+    window.__rusoSave.zoom=(w>2200)?1.5:1.0;
+  }
+  applyZoom(window.__rusoSave.zoom);
+})();
+/* Ctrl+= / Ctrl+- / Ctrl+0 / Ctrl+ホイール */
+document.addEventListener("keydown",e=>{
+  if(!e.ctrlKey&&!e.metaKey)return;
+  if(e.key==="="||e.key==="+"){e.preventDefault();setZoomIndex(zoomIndex()+1);}
+  else if(e.key==="-"){e.preventDefault();setZoomIndex(zoomIndex()-1);}
+  else if(e.key==="0"){e.preventDefault();applyZoom(1.0);}
+});
+document.addEventListener("wheel",e=>{
+  if(!e.ctrlKey&&!e.metaKey)return;
+  e.preventDefault();
+  setZoomIndex(zoomIndex()+(e.deltaY<0?1:-1));
+},{passive:false});
+
+/* --- スムーズスクロール(詳細設定タブから) --- */
+function applySmoothScroll(on){
+  window.__rusoSave.smoothScroll=!!on;
+  viewport.style.scrollBehavior=on?"smooth":"auto";
+  saveNow();
+}
+if(window.__rusoSave.smoothScroll==null)window.__rusoSave.smoothScroll=true;
+applySmoothScroll(window.__rusoSave.smoothScroll);
+
+/* --- フォント(本文のみ)。
+   AAブロック・過去ログ倉庫・クロームUIには適用しない(CSS側で上書きを禁じている)。
+   フォントファイルは同梱しない(ライセンス)。font-family の参照のみ --- */
+const FONT_CHOICES=[["gothic","ゴシック(標準)"],["mincho","明朝"],["system","システム標準"]];
+function applyFont(f){
+  const v=FONT_CHOICES.some(c=>c[0]===f)?f:"gothic";
+  window.__rusoSave.fontFamily=v;
+  FONT_CHOICES.forEach(c=>document.body.classList.toggle("font-"+c[0],c[0]===v));
+  saveNow();
+}
+if(!window.__rusoSave.fontFamily)window.__rusoSave.fontFamily="gothic";
+applyFont(window.__rusoSave.fontFamily);
+
+/* --- 配色 --- */
+function applySkin(skin){
+  window.__rusoSave.skin=skin;
+  document.body.classList.toggle("skin-night",skin==="night");
+  saveNow();
+}
+if(!window.__rusoSave.skin)window.__rusoSave.skin="standard";
+applySkin(window.__rusoSave.skin);
+
+(function(){
+  const ov=document.getElementById("ov_settings");
+  let tab="general";     /* 開いているタブ */
+  let draft=null;        /* 未適用の変更 */
+  let dirty=false;
+
+  function current(){
+    return {
+      zoom:window.__rusoSave.zoom,
+      skin:window.__rusoSave.skin,
+      font:window.__rusoSave.fontFamily,
+      volume:window.__rusoSave.sfxVolume,
+      smoothScroll:!!window.__rusoSave.smoothScroll,
+    };
+  }
+  function markDirty(){
+    dirty=JSON.stringify(draft)!==JSON.stringify(current());
+    const btn=document.getElementById("optApply");
+    if(btn)btn.disabled=!dirty;
+  }
+  /* 適用: 下書きを実際の設定に流し込む */
+  function apply(){
+    if(!dirty)return;
+    applyZoom(draft.zoom);
+    applySkin(draft.skin);
+    applyFont(draft.font);
+    _sfxSetVolume(draft.volume);
+    applySmoothScroll(draft.smoothScroll);
+    dirty=false;
+    render();
+  }
+
+  const TABS=[["general","全般"],["display","画面"],["sound","音"],["advanced","詳細設定"]];
+
+  function bodyHTML(){
+    if(tab==="general"){
+      return `<fieldset class="opt-group"><legend>ホームページ</legend>
+          <div class="opt-row">
+            <label class="opt-inline">アドレス(<u>R</u>):</label>
+            <input type="text" class="opt-text" id="optHome" value="http://bbs.akashiya.jp/" readonly>
+          </div>
+        </fieldset>
+        <fieldset class="opt-group"><legend>閲覧の履歴</legend>
+          <div class="opt-desc">保存された履歴、認定の記録、実績を削除します。</div>
+          <div class="opt-row opt-right">
+            <button class="opt-btn" id="optClearHistory">履歴のクリア...</button>
+          </div>
+        </fieldset>
+        <fieldset class="opt-group"><legend>接続</legend>
+          <div class="opt-row opt-right">
+            <button class="opt-btn" disabled>接続の設定...</button>
+          </div>
+        </fieldset>`;
+    }
+    if(tab==="display"){
+      const size=ZOOM_STEPS.indexOf(draft.zoom);
+      const radios=ZOOM_LABELS.map((lab,i)=>
+        `<label class="opt-radio"><input type="radio" name="optSize" value="${i}" ${i===size?"checked":""}> ${lab}</label>`
+      ).reverse().join("");
+      return `<fieldset class="opt-group"><legend>文字のサイズ</legend>
+          <div class="opt-list">${radios}</div>
+          <div class="opt-desc">画面全体の表示倍率と連動します(Ctrl と + / − でも変更できます)。</div>
+        </fieldset>
+        <fieldset class="opt-group"><legend>フォント</legend>
+          <div class="opt-list">
+            ${FONT_CHOICES.map(([v,lab])=>
+              `<label class="opt-radio"><input type="radio" name="optFont" value="${v}" ${draft.font===v?"checked":""}> ${lab}</label>`).join("")}
+          </div>
+          <div class="opt-desc">本文にのみ適用されます(アスキーアートと過去ログの表示は変わりません)。</div>
+        </fieldset>
+        <fieldset class="opt-group"><legend>配色</legend>
+          <div class="opt-list">
+            <label class="opt-radio"><input type="radio" name="optSkin" value="standard" ${draft.skin==="standard"?"checked":""}> 標準</label>
+            <label class="opt-radio"><input type="radio" name="optSkin" value="night" ${draft.skin==="night"?"checked":""}> 夜間</label>
+          </div>
+        </fieldset>`;
+    }
+    if(tab==="sound"){
+      return `<fieldset class="opt-group"><legend>効果音</legend>
+          <div class="opt-row">
+            <label class="opt-inline">音量:</label>
+            <input type="range" id="optVol" min="0" max="100" step="1" value="${draft.volume}">
+            <span class="opt-val" id="optVolLabel">${draft.volume}</span>
+            <button class="opt-btn" id="optVolTest">♪ テスト</button>
+          </div>
+        </fieldset>`;
+    }
+    /* 詳細設定: IE風のチェックボックスツリー */
+    return `<fieldset class="opt-group"><legend>設定</legend>
+        <div class="opt-tree">
+          <div class="opt-tree-node">ブラウズ</div>
+          <label class="opt-tree-item">
+            <input type="checkbox" id="optSmooth" ${draft.smoothScroll?"checked":""}> スムーズ スクロールを使用する
+          </label>
+        </div>
+      </fieldset>`;
+  }
+
+  function render(){
+    if(!draft)draft=current();
+    ov.innerHTML=`<div class="opt-win" role="dialog">
+      <div class="opt-titlebar">
+        <span>オプション — あかしやブラウザ 2.4</span>
+        <span class="opt-x" data-close="settings">×</span>
+      </div>
+      <div class="opt-tabs">
+        ${TABS.map(([id,label])=>
+          `<span class="opt-tab${tab===id?" active":""}" data-tab="${id}">${label}</span>`).join("")}
+      </div>
+      <div class="opt-body">${bodyHTML()}</div>
+      <div class="opt-foot">
+        <button class="opt-btn" id="optOk">OK</button>
+        <button class="opt-btn" id="optCancel">キャンセル</button>
+        <button class="opt-btn" id="optApply" disabled>適用</button>
+      </div>
+    </div>`;
+    wire();
+    markDirty();
+  }
+
+  function wire(){
+    ov.querySelectorAll(".opt-tab").forEach(t=>{
+      t.onclick=()=>{tab=t.dataset.tab;render();};
+    });
+    const vol=ov.querySelector("#optVol");
+    if(vol){
+      vol.oninput=()=>{
+        draft.volume=+vol.value;
+        ov.querySelector("#optVolLabel").textContent=vol.value;
+        markDirty();
+      };
+      ov.querySelector("#optVolTest").onclick=()=>{
+        /* テストは下書きの音量で鳴らす(適用しなくても確かめられる) */
+        const keep=window.__rusoSave.sfxVolume;
+        _sfxSetVolume(draft.volume);
+        playSfx("newpost");
+        window.__rusoSave.sfxVolume=keep;
+      };
+    }
+    ov.querySelectorAll('[name="optSize"]').forEach(r=>{
+      r.onchange=()=>{draft.zoom=ZOOM_STEPS[+r.value];markDirty();};
+    });
+    ov.querySelectorAll('[name="optSkin"]').forEach(r=>{
+      r.onchange=()=>{draft.skin=r.value;markDirty();};
+    });
+    ov.querySelectorAll('[name="optFont"]').forEach(r=>{
+      r.onchange=()=>{draft.font=r.value;markDirty();};
+    });
+    const smooth=ov.querySelector("#optSmooth");
+    if(smooth)smooth.onchange=()=>{draft.smoothScroll=smooth.checked;markDirty();};
+
+    const clr=ov.querySelector("#optClearHistory");
+    if(clr)clr.onclick=confirmClearHistory;
+
+    ov.querySelector("#optApply").onclick=apply;
+    ov.querySelector("#optOk").onclick=()=>{apply();close();};
+    ov.querySelector("#optCancel").onclick=()=>{draft=null;close();};
+  }
+  function close(){ov.classList.remove("open");draft=null;dirty=false;}
+
+  /* 履歴のクリア = セーブ削除。二段構え */
+  function confirmClearHistory(){
+    const c=document.createElement("div");
+    c.className="opt-confirm";c.id="optConfirm";
+    c.innerHTML=`<div class="opt-win opt-win-sm">
+      <div class="opt-titlebar"><span>履歴のクリア</span></div>
+      <div class="opt-body">
+        <div class="opt-warn">すべての履歴と認定の記録を削除します。この操作は元に戻せません。</div>
+      </div>
+      <div class="opt-foot">
+        <button class="opt-btn" id="optClearYes">削除する</button>
+        <button class="opt-btn" id="optClearNo">キャンセル</button>
+      </div>
+    </div>`;
+    ov.appendChild(c);
+    c.querySelector("#optClearNo").onclick=()=>c.remove();
+    c.querySelector("#optClearYes").onclick=()=>{
+      resetSave();
+      c.remove();
+      close();
+      renderHome();
+      activate("home");
+      showToast("履歴と認定の記録を削除した");
+    };
+  }
+
+  document.getElementById("btnSettings").onclick=()=>{
+    document.querySelectorAll(".overlay").forEach(o=>o.classList.remove("open"));
+    tab="general";draft=current();dirty=false;
+    render();
+    ov.classList.add("open");
+  };
+})();
+
+/* --- 量刑テキスト --- */
+function sentenceText(){
+  const y=parseFloat(judgeState.years||3);
+  if(y===0)return"無罪";
+  const yy=Math.floor(y),mm=(y%1)?"6月":"";
+  return`拘禁刑${yy}年${mm}`+(judgeState.susp?"・執行猶予":"");
+}
+
+/* --- 採点 --- */
+function grade(){
+  const slotIds=Object.keys(CASE.slots);
+  const emptySlots=slotIds.filter(s=>!judgeState.fill[s]);
+  if(emptySlots.length){showToast("埋まっていない穴がある");return;}
+  if(!judgeState.lieSel||!judgeState.proofSel){showToast("嘘と反証の指摘が終わっていない");return;}
+  let correct=slotIds.filter(s=>judgeState.fill[s]===CASE.slots[s].accept).length;
+  const lieOk=judgeState.lieSel===CASE.lie.answer;
+  const proofOk=(CASE.lie.proofs||[]).includes(judgeState.proofSel);
+  if(lieOk)correct++;
+  if(proofOk)correct++;
+  const total=slotIds.length+2;
+  judgeState.tries=(judgeState.tries||0)+1;
+  if(correct===total){
+    solved=true;
+    playSfx("success");
+    if(judgeState.tries===1)recordAchievement("perfect_"+caseKey);
+    judgeState.lastResult=`<strong>事実認定 ${total}/${total}(穴${slotIds.length}+嘘1+反証1) — 判決確定。</strong> スレに動きがある。`;
+    renderJudge();
+    setTimeout(openVerdict,900);
+  }else{
+    failCount++;
+    playSfx("fail");
+    judgeState.lastResult=`<strong>事実認定 ${correct}/${total}。</strong>(全${total}項目=穴${slotIds.length}+嘘1+反証1)<br>どこが違うかは言えない。資料を読み直せ。`;
+    renderJudge();
+    document.getElementById("ov_judge").classList.add("open");
+    if(failCount>=3&&hintGiven<CASE.hints.length){
+      const h=CASE.hints[hintGiven++];
+      failCount=0;
+      setTimeout(()=>{appendThread([h]);showToast("スレに新着レスがある");},1200);
+    }
+  }
+}
+
+/* --- 採取 & 嘘指摘クリック(六法オーバーレイ内の語も拾えるようdocumentで監視) --- */
+document.addEventListener("click",e=>{
+  const tk=e.target.closest(".tok");
+  if(tk&&!judgeState.pointing){
+    const id=tk.dataset.tok;
+    if(!pool.has(id)){
+      pool.add(id);
+      document.querySelectorAll(`.tok[data-tok="${id}"]`).forEach(x=>x.classList.add("got"));
+      showToast("採取: 「"+tokenLabel(id)+"」");
+      playSfx("collect");
+      renderJudge();
+    }
+    return;
+  }
+  if(judgeState.pointing){
+    const st=e.target.closest(".sent");
+    if(st){
+      if(judgeState.pointing==="lie"){
+        judgeState.lieSel=st.dataset.sid;
+        judgeState.pointing="proof";
+        showToast("② その嘘を崩す証拠の一文を突きつけろ(別の資料でもいい)");
+      }else{
+        judgeState.proofSel=st.dataset.sid;
+        judgeState.pointing=false;
+        document.body.classList.remove("pointing");
+        showToast("指摘完了。認定パネルに戻る");
+        renderJudge();
+        document.getElementById("ov_judge").classList.add("open");
+      }
+    }
+  }
+});
+
+/* --- リザルト: 判決スレ --- */
+function openVerdict(){
+  document.querySelectorAll(".overlay").forEach(o=>o.classList.remove("open"));
+  const vt=CASE.verdictThread;
+  /* 判決/和解スレの日付(常駐日時がこのページを開いている間はこれを出す) */
+  (vt.posts||[]).forEach(p=>{const d=pickDate(p.date);if(d>verdictDate)verdictDate=d;});
+  const posts=vt.posts.map(p=>{
+    if(p.uid==="PLAYER"){
+      return renderPost({...p,uid:"You"+Math.random().toString(36).slice(2,8),
+        body:vt.playerPostTemplate
+          .replace("{SENTENCE_CASE03}",pastSentence("case03"))
+          .replace("{SENTENCE}",outcomeText())
+          .replace("{SETTLEMENT}",outcomeText())});
+    }
+    return renderPost(p);
+  }).join("");
+  /* セッション記録に保存 */
+  if(caseNum){
+    const cn=caseKey;
+    if(isCivil){
+      const g=statutoryGuide(),diff={};
+      partyIds().forEach(id=>diff[id]=(settleState.alloc[id]||0)-(g.shares[id]||0));
+      window.__rusoSave.settlements[cn]={
+        alloc:Object.assign({},settleState.alloc),
+        toggles:Object.assign({},settleState.toggles),
+        statutory:{basis:g.basis,deemed:g.deemed,shares:Object.assign({},g.shares)},
+        diff
+      };
+    }else{
+      window.__rusoSave.sentences[cn]=sentenceText();
+    }
+    window.__rusoSave.cleared[cn]=true;
+    recordAchievement("clear_"+cn); /* この中で saveNow() が走る */
+    /* 全章クリア判定はチャプター選択側で行う */
+  }
+
+  const el=document.createElement("div");
+  el.className="page";el.id="pg_verdict";
+  el.innerHTML=`<div class="board-head">あかしや掲示板 ＞ ニュース速報(裏) ＞ スレ表示　— 数ヶ月後 —</div>
+    <div class="thread-title">${vt.title}</div>
+    ${renderAd("verdict")}
+    ${posts}
+    <div class="hanji">${CASE.hanji.replace(/\n/g,"<br>")}</div>
+    <p><strong>解説:</strong> ${CASE.explanation}</p>
+    <div class="q" id="gaseArea">
+      <label class="q-label">${CASE.gase.label}</label>
+      <div class="gase-list">${CASE.gase.candidates.map(n=>`<label><input type="checkbox" value="${n}">レス ${n}</label>`).join("")}</div>
+      <button id="gaseBtn" class="ghost">ガセ認定を提出(任意)</button>
+      <div class="result" id="gaseResult"></div>
+    </div>
+    ${finalRecognitionHTML()}
+    ${demoOutroHTML()}
+    <div class="disclaimer">${CASE.disclaimer}</div>`;
+  viewport.appendChild(el);
+  wireFinalRecognition();
+  const t=makeTab("verdict",verdictTabLabel());
+  t.classList.add("new");
+  activate("verdict");
+
+  document.getElementById("gaseBtn").onclick=()=>{
+    const sel=[...el.querySelectorAll(".gase-list input:checked")].map(i=>+i.value).sort();
+    const ans=[...CASE.gase.answers].sort();
+    const ok=sel.length===ans.length&&sel.every((v,i)=>v===ans[i]);
+    const gr=document.getElementById("gaseResult");
+    gr.classList.add("show");
+    gr.innerHTML=(ok?"<strong>全問正解。</strong> ":"<strong>不正解。</strong> ")+CASE.gase.explain;
+    if(ok)recordAchievement("gase_perfect_"+caseKey);
+    document.getElementById("gaseBtn").disabled=true;
+    setTimeout(showFinaleAA,1000);
+  };
+  /* ガセをやらず閉じても、少し待って締めAAは出す */
+  setTimeout(()=>{if(!document.getElementById("finaleAA").classList.contains("up")&&solved)showFinaleAA();},45000);
+}
+
+/* --- 体験版のクリア後画面。製品ビルドでは出ない(__DEMO__=false) --- */
+function demoOutroHTML(){
+  if(typeof __DEMO__==="undefined"||!__DEMO__)return "";
+  const href=(typeof __DEMO_LINK__!=="undefined"&&__DEMO_LINK__)?__DEMO_LINK__:"#";
+  return `<div class="demo-outro">
+    <p>この事件は序章です。あかしや掲示板の祭りは、あと6つ続きます</p>
+    <a class="demo-btn" id="demoBtn" href="${href}">続きを見る</a>
+  </div>`;
+}
+
+/* ============================================================
+   最終認定(finalRecognition) — フィーチャーフラグ。既定OFF
+   嘘指摘をクリアした後の追加認定。正解すると、その住民の全レス・全ブログ記事を
+   時系列で一覧する(素材は data/kujira_timeline.json をビルド時に注入)
+   ============================================================ */
+function normName(s){return String(s||"").replace(/\s+/g,"").toLowerCase();}
+function finalRecognitionHTML(){
+  const fr=CASE.finalRecognition;
+  if(!fr||!flagOn("finalRecognition"))return "";
+  /* 候補は板に出てくるコテ名から拾う(名無しは除く) */
+  const names=new Set();
+  CASE.pages.forEach(pg=>{
+    (pg.posts||[]).concat((pg.onOpen&&pg.onOpen.threadPosts)||[]).forEach(p=>{
+      if(p.name&&!/^名無し/.test(p.name))names.add(p.name);
+    });
+  });
+  (CASE.verdictThread.posts||[]).forEach(p=>{
+    if(p.name&&!/^名無し/.test(p.name))names.add(p.name);
+  });
+  names.add(fr.answer);
+  const opts=[...names].sort().map(n=>`<option value="${n}">`).join("");
+  return `<div class="q" id="finalArea">
+    <label class="q-label">${fr.label}</label>
+    <div class="final-row">
+      <input type="text" id="finalInput" list="finalNames" placeholder="住民の名前を書け" autocomplete="off">
+      <datalist id="finalNames">${opts}</datalist>
+      <button id="finalBtn" class="ghost">最終認定を提出</button>
+    </div>
+    <div class="result" id="finalResult"></div>
+    <div id="finalTimeline"></div>
+  </div>`;
+}
+function wireFinalRecognition(){
+  const btn=document.getElementById("finalBtn");
+  if(!btn)return;
+  btn.onclick=()=>{
+    const fr=CASE.finalRecognition;
+    const ok=normName(document.getElementById("finalInput").value)===normName(fr.answer);
+    const box=document.getElementById("finalResult");
+    box.classList.add("show");
+    if(ok){
+      box.innerHTML=`<strong>認定。</strong> ${fr.answer} —— この板で、一度も嘘を書かなかった住民。`;
+      recordAchievement("final_recognition_"+caseKey);
+      playSfx("success");
+      btn.disabled=true;
+      renderKujiraTimeline();
+    }else{
+      box.innerHTML="<strong>違う。</strong> その住民は、どこかで嘘を書いている。";
+      playSfx("fail");
+    }
+  };
+}
+function renderKujiraTimeline(){
+  const rows=(typeof __KUJIRA__!=="undefined")?__KUJIRA__:[];
+  const holder=document.getElementById("finalTimeline");
+  if(!holder||!rows.length)return;
+  /* 見出しの名前はケースデータから取る(エンジンは事件データ非依存) */
+  holder.innerHTML=`<div class="kt">
+    <div class="kt-head">${CASE.finalRecognition.answer} — この板に書いた全て</div>
+    ${rows.map(r=>`<div class="kt-row">
+      <div class="kt-date">${r.date}<span class="kt-ch">${r.chapter}</span></div>
+      <div class="kt-body"><div class="kt-kind">${r.kind}</div>
+        <div class="kt-text">${r.text}</div>
+        ${r.note?`<div class="kt-note">${r.note}</div>`:""}</div>
+    </div>`).join("")}
+  </div>`;
+  holder.querySelector(".kt").scrollIntoView({block:"nearest"});
+}
+
+/* ============================================================
+   エンディング(ending) — フィーチャーフラグ。既定OFF
+   判決リザルトの後、一枚画面でトリップ付きの一言レスを出す
+   ============================================================ */
+function showEnding(){
+  const en=CASE.ending;
+  if(!en||!flagOn("ending"))return false;
+  const ov=document.createElement("div");
+  ov.className="ending";ov.id="endingScreen";
+  const p=en.post||{};
+  ov.innerHTML=`<div class="ending-inner">
+    <div class="ending-post">
+      <div class="ph"><span class="pn">${p.name||""}</span>：<span class="pd">${p.date||""}</span></div>
+      <div class="pb">${p.body||""}</div>
+    </div>
+    <div class="ending-caption">${en.caption||""}</div>
+  </div>`;
+  document.body.appendChild(ov);
+  requestAnimationFrame(()=>ov.classList.add("up"));
+  ov.onclick=()=>ov.classList.remove("up");
+  recordAchievement("ending_seen_"+caseKey);
+  return true;
+}
+
+/* --- 締めAA --- */
+function showFinaleAA(){
+  const f=document.getElementById("finaleAA");
+  if(f.classList.contains("up"))return;
+  f.innerHTML=`<div class="aa">${CASE.finaleAA.aa}</div><div style="font-size:11px;color:var(--dim);text-align:right;margin-top:4px;">${CASE.finaleAA.caption}</div>`;
+  requestAnimationFrame(()=>f.classList.add("up"));
+  f.onclick=()=>f.classList.remove("up");
+  /* 締めAAのあとにエンディング(フラグOFFなら何も起きない) */
+  setTimeout(showEnding,2500);
+}
+
+/* --- ナビボタン --- */
+document.getElementById("btnBack").onclick=goBack;
+document.getElementById("btnFwd").onclick=goFwd;
+document.getElementById("btnReload").onclick=()=>{
+  const v=viewport;
+  v.style.opacity=".4";
+  setTimeout(()=>{v.style.opacity="1";v.scrollTop=0;showToast("更新した。今のところ動きはない");},250);
+};
+
+/* ホームを最初のタブにして、そこから始める(額縁は全画面で同じ) */
+(function(){
+  const t=makeTab("home","ホーム");
+  tabbar.insertBefore(t,tabbar.firstChild); /* ホームは常に左端 */
+})();
+renderHome();
+activate("home");
+
+/* --- 起動ログ(額縁の外。ログが流れ終わったら本物のブラウザのホームが出る) --- */
+(function(){
+  const boot=document.getElementById("boot");
+  const log=document.getElementById("bootLog");
+
+  const lines=[
+    "Akashiya Browser 2.4 ... <span class='ok'>OK</span>",
+    "プロファイル読み込み ... <span class='ok'>OK</span>",
+    "前回のセッションを復元しています..."
+  ];
+  lines.forEach((html,i)=>{
+    const div=document.createElement("div");
+    div.className="boot-log-line";div.innerHTML=html;
+    log.appendChild(div);
+    setTimeout(()=>div.classList.add("show"),i*250+100);
+  });
+
+  function dismissBoot(){
+    boot.classList.add("fade");
+    setTimeout(()=>{boot.style.display="none";},600);
+  }
+  setTimeout(dismissBoot,lines.length*250+500);
+  log.onclick=dismissBoot; /* クリックでスキップ */
+})();
+
+/* --- 最小化 --- */
+(function(){
+  const browser=document.getElementById("browser");
+  const taskbar=document.getElementById("taskbar");
+  const taskbarBtn=document.getElementById("taskbarBtn");
+  document.getElementById("btnMinimize").onclick=(e)=>{
+    e.stopPropagation();
+    browser.classList.add("minimized");
+    taskbar.classList.add("show");
+  };
+  taskbarBtn.onclick=()=>{
+    browser.classList.remove("minimized");
+    taskbar.classList.remove("show");
+  };
+})();
+
+/* --- ESCで道具を閉じる --- */
+document.addEventListener("keydown",e=>{
+  if(e.key==="Escape")document.querySelectorAll(".overlay.open").forEach(o=>o.classList.remove("open"));
+});
+</script>
+</body>
+</html>
