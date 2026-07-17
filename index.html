@@ -352,9 +352,19 @@
   .demo-btn{
     display:inline-block;background:var(--thread);color:#fffeee;
     padding:8px 22px;font-size:13px;font-weight:700;text-decoration:none;
+    margin:4px 5px;border:none;cursor:pointer;font-family:inherit;
   }
   .demo-btn:hover{opacity:.85;}
   body.skin-night .demo-outro{background:#252520;border-color:#3e3e38;}
+
+  /* 体験版の常設導線(ブックマークバー右端・ホーム脚注)。世界観に馴染むテキストリンク */
+  .demo-nav.bookmark{margin-left:auto;display:inline-flex;gap:10px;padding-left:10px;}
+  .demo-nav.home{display:block;margin:6px 0 2px;font-size:11px;}
+  .demo-ext{
+    color:var(--link);text-decoration:none;font-size:11px;white-space:nowrap;
+  }
+  .demo-ext:hover{text-decoration:underline;}
+  .demo-nav.home .demo-ext{margin:0 8px;}
 
   /* 最終認定(finalRecognition・フラグ) */
   .final-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
@@ -1144,7 +1154,8 @@ var __CASENUM__="01";
 var __KUJIRA__=[];
 var __REACTIONS__={"case01":{"postNo":11,"kind":"criminal","bands":[{"id":"zero","lo":0,"hi":0,"body":"&gt;&gt;10\n傍聴乙\n全部無罪か。踏んだ3発も防衛のうちって読みか\nあの24秒、お前にはそう見えたんだな。俺はまだ分からん"},{"id":"light","lo":0.5,"hi":1.5,"body":"&gt;&gt;10\n傍聴乙\n実際よりだいぶ軽いな。よけて一発返した側の続き、として見たか\nで、あの24秒はどう見たんだ"},{"id":"near","lo":2,"hi":3.5},{"id":"heavy","lo":4,"hi":10,"body":"&gt;&gt;10\n傍聴乙\n重めに振ったか。あの24秒が効いたクチだな\n分かるよ。俺もあれが頭から離れん"}]}};
 var __DEMO__=true;
-var __DEMO_LINK__="#";
+var __DEMO_LINK_X__="https://x.com/ww56626521";
+var __DEMO_LINK_STEAM__="";
 /* ============================================================
    エンジン(事件データ非依存)
    ============================================================ */
@@ -1771,6 +1782,7 @@ function renderHome(){
       </div>
       <div class="boot-history" id="bootHistory">${histHTML}</div>
       <div id="bootHomeAd">${renderAd("home")}</div>
+      ${demoNavHTML("home")}
       <div class="boot-footer">${CASE.disclaimer}</div>
     </div>
   </div>`;
@@ -2865,25 +2877,38 @@ function openVerdict(){
   setTimeout(()=>{if(!document.getElementById("finaleAA").classList.contains("up")&&solved)showFinaleAA();},45000);
 }
 
-/* --- 体験版のクリア後画面。製品ビルドでは出ない(__DEMO__=false) --- */
-function demoLinkSet(){
-  return typeof __DEMO_LINK__!=="undefined"&&__DEMO_LINK__&&__DEMO_LINK__!=="#";
+/* --- 体験版の外部リンク(製品ビルドでは全て出ない) --- */
+function isDemo(){return typeof __DEMO__!=="undefined"&&__DEMO__;}
+function demoLinks(){
+  const x=(typeof __DEMO_LINK_X__!=="undefined"&&__DEMO_LINK_X__)?__DEMO_LINK_X__:"";
+  const steam=(typeof __DEMO_LINK_STEAM__!=="undefined"&&__DEMO_LINK_STEAM__)?__DEMO_LINK_STEAM__:"";
+  return {x,steam};
 }
+/* クリア後画面。設定が空のリンクは描画しない(死んだボタンを出さない)。
+   両方空のときのみ「製作中」ダイアログの保険ボタンを出す。 */
 function demoOutroHTML(){
-  if(typeof __DEMO__==="undefined"||!__DEMO__)return "";
-  /* 実URLが入ったビルド=新規タブで遷移。未設定("#")=世界観準拠のダイアログ */
-  const btn=demoLinkSet()
-    ? `<a class="demo-btn" id="demoBtn" href="${__DEMO_LINK__}" target="_blank" rel="noopener">続きを見る</a>`
-    : `<button class="demo-btn" id="demoBtn">続きを見る</button>`;
+  if(!isDemo())return "";
+  const {x,steam}=demoLinks();
+  const a=(url,label)=>url?`<a class="demo-btn" href="${url}" target="_blank" rel="noopener">${label}</a>`:"";
+  const btns=[a(steam,"Steamでウィッシュリストに追加"),a(x,"開発者のXを見る")].filter(Boolean).join("");
+  const body=btns||`<button class="demo-btn" id="demoBtn">続きを見る</button>`;
   return `<div class="demo-outro">
     <p>この事件は序章です。あかしや掲示板の祭りは、あと6つ続きます</p>
-    ${btn}
+    ${body}
   </div>`;
 }
-/* 「続きを見る」の配線。URL未設定時のみダイアログを出す(遷移は起こさない) */
+/* ゲーム中の常設導線(ブックマークバー右端・ホーム脚注)。demoのみ。空リンクは出さない */
+function demoNavHTML(cls){
+  if(!isDemo())return "";
+  const {x,steam}=demoLinks();
+  const a=(url,label)=>url?`<a class="demo-ext" href="${url}" target="_blank" rel="noopener">☆ ${label}</a>`:"";
+  const links=[a(steam,"Steamストア"),a(x,"開発者のX")].filter(Boolean).join("");
+  return links?`<span class="demo-nav ${cls||""}">${links}</span>`:"";
+}
+/* 「続きを見る」保険ボタンの配線。両リンク空のときだけ存在する */
 function wireDemoOutro(){
   const btn=document.getElementById("demoBtn");
-  if(!btn||demoLinkSet())return; /* 実URLはアンカーのまま(新規タブ遷移) */
+  if(!btn)return; /* リンクがある=アンカーなので配線不要 */
   btn.onclick=e=>{
     e.preventDefault();
     if(document.getElementById("demoModal"))return;
@@ -2898,6 +2923,13 @@ function wireDemoOutro(){
     m.querySelector("#demoModalClose").onclick=()=>m.remove();
   };
 }
+/* ブックマークバー右端に常設導線を差す(demoのみ・一度だけ) */
+(function(){
+  const nav=demoNavHTML("bookmark");
+  if(!nav)return;
+  const bb=document.getElementById("bookmarkbar");
+  if(bb)bb.insertAdjacentHTML("beforeend",nav);
+})();
 
 /* ============================================================
    最終認定(finalRecognition) — フィーチャーフラグ。既定OFF
