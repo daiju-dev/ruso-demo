@@ -2815,6 +2815,7 @@ function openVerdict(){
     <div class="disclaimer">${CASE.disclaimer}</div>`;
   viewport.appendChild(el);
   wireFinalRecognition();
+  wireDemoOutro();
   const t=makeTab("verdict",verdictTabLabel());
   t.classList.add("new");
   /* 元スレのタブにも未読の点滅(判決後にスレが動いたことを示す) */
@@ -2865,13 +2866,37 @@ function openVerdict(){
 }
 
 /* --- 体験版のクリア後画面。製品ビルドでは出ない(__DEMO__=false) --- */
+function demoLinkSet(){
+  return typeof __DEMO_LINK__!=="undefined"&&__DEMO_LINK__&&__DEMO_LINK__!=="#";
+}
 function demoOutroHTML(){
   if(typeof __DEMO__==="undefined"||!__DEMO__)return "";
-  const href=(typeof __DEMO_LINK__!=="undefined"&&__DEMO_LINK__)?__DEMO_LINK__:"#";
+  /* 実URLが入ったビルド=新規タブで遷移。未設定("#")=世界観準拠のダイアログ */
+  const btn=demoLinkSet()
+    ? `<a class="demo-btn" id="demoBtn" href="${__DEMO_LINK__}" target="_blank" rel="noopener">続きを見る</a>`
+    : `<button class="demo-btn" id="demoBtn">続きを見る</button>`;
   return `<div class="demo-outro">
     <p>この事件は序章です。あかしや掲示板の祭りは、あと6つ続きます</p>
-    <a class="demo-btn" id="demoBtn" href="${href}">続きを見る</a>
+    ${btn}
   </div>`;
+}
+/* 「続きを見る」の配線。URL未設定時のみダイアログを出す(遷移は起こさない) */
+function wireDemoOutro(){
+  const btn=document.getElementById("demoBtn");
+  if(!btn||demoLinkSet())return; /* 実URLはアンカーのまま(新規タブ遷移) */
+  btn.onclick=e=>{
+    e.preventDefault();
+    if(document.getElementById("demoModal"))return;
+    const m=document.createElement("div");
+    m.className="opt-confirm";m.id="demoModal";
+    m.innerHTML=`<div class="opt-win opt-win-sm">
+      <div class="opt-titlebar"><span>あかしやネットサービス</span></div>
+      <div class="opt-body"><div class="opt-warn">製品版は現在製作中です。あかしや掲示板の祭りは、もう少しだけ先です。</div></div>
+      <div class="opt-foot"><button class="opt-btn" id="demoModalClose">閉じる</button></div>
+    </div>`;
+    document.body.appendChild(m);
+    m.querySelector("#demoModalClose").onclick=()=>m.remove();
+  };
 }
 
 /* ============================================================
