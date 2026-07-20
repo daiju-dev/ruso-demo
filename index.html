@@ -15,6 +15,15 @@
 <meta name="description" content="匿名掲示板を読み、判決文を書く。掲示板考証ミステリの体験版。">
 <style>
   :root{
+    /* ===== ズーム安全な画面寸法(D-114) =====
+       CSS の zoom は vh/vw を補正しない。画面いっぱいに広げる箱に生の vh/vw を書くと
+       ズーム段のぶんだけ画面からはみ出し、**中央寄せの箱は上・左が到達不能**になる
+       (オプション窓ごと画面外へ出て、文字サイズを戻せなくなる)。
+       画面を基準に大きさを決める箱は、必ず --svh / --svw を使うこと。
+       生の vh/vw を使ってよいのは、画面外から流れてくる弾幕の開始位置だけ。
+       テスト P0-9 が新しい生 vh/vw の混入を機械検出する。 */
+    --svh:calc(100vh / var(--zoom,1));
+    --svw:calc(100vw / var(--zoom,1));
     --chrome:#c9c6bb;      /* ブラウザ枠 */
     --chrome-dark:#a8a598;
     --bg:#e8e8e3;
@@ -46,8 +55,8 @@
     /* ズームは中身の文字だけに効かせる。額縁は 1/z して常に画面ぴったりにする(D-108)。
        こうしないと zoom が vh/vw を補正しないぶん額縁が画面からはみ出し、
        中央寄せのせいで上側が到達不能になる。 */
-    width:calc(min(1500px,96vw) / var(--zoom,1));
-    height:calc((100vh - 24px) / var(--zoom,1));
+    width:min(calc(1500px / var(--zoom,1)), calc(var(--svw) * 0.96));
+    height:calc(var(--svh) - 24px);
     background:var(--chrome);
     border:1px solid #7d7b70;border-radius:6px 6px 0 0;
     display:flex;flex-direction:column;
@@ -97,7 +106,9 @@
   @keyframes blinkdot{50%{opacity:.25;}}
   /* アドレスバー */
   #addressbar{
-    display:flex;align-items:center;gap:6px;
+    /* 文字サイズを上げると URL欄+ナビ+設定 が一行に収まらない。溢れさせず折り返す(D-114)。
+       溢れると右端の「設定」(=文字サイズを戻す唯一の導線)が画面外に出て詰む。 */
+    display:flex;align-items:center;gap:6px;flex-wrap:wrap;
     background:var(--bg);border-top:1px solid #7d7b70;
     padding:5px 10px;
   }
@@ -114,7 +125,9 @@
   .navbtn.dead{color:#b9b6aa;cursor:default;background:none;}
   /* ブックマークバー */
   #bookmarkbar{
-    display:flex;gap:4px;align-items:center;
+    /* 文字サイズを上げると道具が横に収まらなくなる。溢れさせず折り返す(D-114)。
+       溢れると右端の「設定」が画面外に出て、文字サイズを戻せなくなる。 */
+    display:flex;gap:4px;align-items:center;flex-wrap:wrap;
     background:var(--bg);border-bottom:1px solid var(--rule);
     padding:3px 10px 5px;font-size:11px;
     font-family:"MS PGothic","ＭＳ Ｐゴシック","Hiragino Kaku Gothic ProN",sans-serif;
@@ -231,8 +244,9 @@
   }
   .overlay.open{display:flex;align-items:center;justify-content:center;padding:20px;}
   .tool{
-    background:var(--post);border:2px solid var(--ink);width:min(700px,94vw);
-    max-height:calc(100vh - 48px);overflow-y:auto;
+    background:var(--post);border:2px solid var(--ink);
+    width:min(calc(700px / var(--zoom,1)), calc(var(--svw) * 0.94));
+    max-height:calc(var(--svh) - 48px);overflow-y:auto;
     padding:16px 20px;box-shadow:0 6px 24px rgba(0,0,0,.4);
   }
   .tool-head{display:flex;justify-content:space-between;align-items:center;border-bottom:1px dotted var(--rule);padding-bottom:6px;margin-bottom:12px;}
@@ -919,11 +933,13 @@
      ============================================================ */
   .opt-win{
     background:var(--chrome);border:2px outset #e2e0d8;
-    width:min(440px,92vw);box-shadow:0 6px 24px rgba(0,0,0,.45);
+    width:min(calc(440px / var(--zoom,1)), calc(var(--svw) * 0.92));
+    max-height:calc(var(--svh) - 32px);overflow-y:auto;
+    box-shadow:0 6px 24px rgba(0,0,0,.45);
     font-size:12px;color:#1a1a1a;
     font-family:"MS PGothic","ＭＳ Ｐゴシック","Hiragino Kaku Gothic ProN",sans-serif;
   }
-  .opt-win-sm{width:min(360px,90vw);}
+  .opt-win-sm{width:min(calc(360px / var(--zoom,1)), calc(var(--svw) * 0.90));}
   .opt-titlebar{
     background:linear-gradient(90deg,#0a246a,#a6caf0);
     color:#fff;font-size:11px;font-weight:700;
@@ -1042,7 +1058,8 @@
 
   @media (max-width:600px){
     body{padding:0;}
-    #browser{height:100vh;max-height:none;border-radius:0;border:none;}
+    /* ここで生の 100vh に戻すと D-108/D-114 の割り戻しが無効になる */
+    #browser{height:var(--svh);max-height:none;border-radius:0;border:none;}
     .newspage,.docpage{padding:14px;}
   }
 
