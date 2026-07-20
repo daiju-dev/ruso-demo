@@ -1537,6 +1537,7 @@ function _sfxEnsure(){
     _sfxGain.connect(_sfxCtx.destination);
     const vol=(window.__rusoSave&&window.__rusoSave.sfxVolume!=null)?window.__rusoSave.sfxVolume:50;
     _sfxGain.gain.value=vol/100;
+    window.__rusoSfxCtx=_sfxCtx; /* 検査用の参照(実機での状態確認に使う。挙動には影響しない) */
   }catch(e){_sfxCtx=null;}
   return _sfxCtx;
 }
@@ -1709,6 +1710,34 @@ function playSfx(event,opts){
   }catch(e){}
   if(voice)setTimeout(()=>{try{voice.disconnect();}catch(e){}_sfxVoices.delete(voice);},1600);
 }
+/* --- スマホの自動再生制約への適合(D-105) ---------------------------------
+   iOS Safari / Android Chrome は、AudioContext を**ユーザー操作の同期文脈**で
+   作って resume しない限り suspended のままにする。従来は playSfx() の中で
+   遅延生成していたため、最初に音を鳴らそうとした場面が操作の同期文脈でないと
+   (トースト・setTimeout 経由の演出など)そのまま塞がれ、以後ずっと無音になった。
+   resume() は Promise を返す非同期なので、その場で鳴らそうとした音も落ちる。
+   定石どおり「初回のユーザー操作で一度だけ解錠」する。capture:true なので
+   アプリ側のハンドラより先に走り、**同じ操作の中で**解錠が済む。
+   iOS は resume だけでは足りず、実際に音源を1回鳴らすまで解錠されないため、
+   長さ1サンプルの無音バッファを同期的に start する。
+   音量設定・♪テスト・既存のSE定義には触っていない。 */
+const _SFX_UNLOCK_EVENTS=["pointerdown","touchend","mousedown","keydown"];
+let _sfxUnlocked=false;
+function _sfxUnlock(){
+  if(_sfxUnlocked)return;
+  const ctx=_sfxEnsure();
+  if(!ctx)return;               /* WebAudio が無い環境。無音のまま進む */
+  _sfxUnlocked=true;
+  try{
+    if(ctx.state==="suspended")ctx.resume();
+    const buf=ctx.createBuffer(1,1,22050);
+    const src=ctx.createBufferSource();
+    src.buffer=buf;src.connect(ctx.destination);src.start(0);
+  }catch(e){}
+  _SFX_UNLOCK_EVENTS.forEach(e=>document.removeEventListener(e,_sfxUnlock,true));
+}
+_SFX_UNLOCK_EVENTS.forEach(e=>document.addEventListener(e,_sfxUnlock,true));
+
 /* 全SEを即時停止(発音中のものも含む)。締めの一斉静止/瞬断/フェード保険で使う。 */
 function stopAllSfx(){
   _sfxVoices.forEach(v=>{try{v.disconnect();}catch(e){}});
