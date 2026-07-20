@@ -1393,7 +1393,7 @@ var __KUJIRA__=[];
 var __REACTIONS__={"case01":{"postNo":11,"kind":"criminal","bands":[{"id":"zero","lo":0,"hi":0,"body":"&gt;&gt;10\n傍聴乙\n全部無罪か。踏んだ3発も防衛のうちって読みか\nあの24秒、お前にはそう見えたんだな。俺はまだ分からん"},{"id":"light","lo":0.5,"hi":1.5,"body":"&gt;&gt;10\n傍聴乙\n実際よりだいぶ軽いな。よけて一発返した側の続き、として見たか\nで、あの24秒はどう見たんだ"},{"id":"near","lo":2,"hi":3.5},{"id":"heavy","lo":4,"hi":10,"body":"&gt;&gt;10\n傍聴乙\n重めに振ったか。あの24秒が効いたクチだな\n分かるよ。俺もあれが頭から離れん"}]}};
 var __DANMAKU__={"core":["乙","おつ","乙です","傍聴乙","8888888888","88888888","w","wwwwww","草","判決出たな","終わったな","祭りだったな","次スレ立てとくわ","このスレ好きだったわ","保存した","おまえら乙","名無しに戻るか","また会おうぜ","おやすみ","飯食ってくる","仕事戻るわ","明日も仕事だわ","乙 じゃあな"],"inserts":["夜道気をつけろよ","帰りにこよい寄ってくわ"],"tail":null};
 var __DEMO__=true;
-var __DEMO_LINK_X__="https://x.com/ww56626521";
+var __DEMO_LINK_X__="https://x.com/daimon_ge";
 var __DEMO_LINK_STEAM__="";
 /* ============================================================
    エンジン(事件データ非依存)
@@ -1450,8 +1450,14 @@ const caseKey="case"+caseNum;
                       この場合のみ永続性なし
    ============================================================ */
 const SAVE_KEY="ruso_save_v1";
+/* セーブのスキーマ版(D-112)。**キー名の v1 とは別物**で、こちらは中身の形の版。
+   version が無いセーブは、この仕組みを入れる前に書かれたもの = 1 として扱う。
+   以後スキーマの意味を変えるときは version を上げ、hydrateSave() で分岐して移行する。
+   フィールドを足すだけの変更は従来どおり blankSave() の既定値で埋まるので版を上げない。 */
+const SAVE_VERSION=1;
 function blankSave(){
-  return {sentences:{},settlements:{},reactions:{},playtest:{},cleared:{},achievements:{},sfxVolume:50};
+  return {version:SAVE_VERSION,
+    sentences:{},settlements:{},reactions:{},playtest:{},cleared:{},achievements:{},sfxVolume:50};
 }
 const saveStore=(function(){
   /* 1. ラッパのブリッジ */
@@ -1494,6 +1500,12 @@ function hydrateSave(initial){
     let c=initial;
     try{c=JSON.parse(JSON.stringify(initial));}catch(e){c=initial;}
     for(const k in c)base[k]=c[k];
+    /* version 欠落 = この仕組みより前のセーブ。1 として扱う(後方互換・D-112) */
+    if(typeof base.version!=="number")base.version=1;
+    /* ここで base.version を見て、必要なら段階的に移行する。
+       今は 1 しか無いので変換なし。上げるときは
+       if(base.version<2){ ...形の変換...; base.version=2; } を積む。 */
+    base.version=SAVE_VERSION;
   }
   return base;
 }
@@ -1772,6 +1784,16 @@ function _sfxUnlock(){
   _SFX_UNLOCK_EVENTS.forEach(e=>document.removeEventListener(e,_sfxUnlock,true));
 }
 _SFX_UNLOCK_EVENTS.forEach(e=>document.addEventListener(e,_sfxUnlock,true));
+/* 一度解錠しても、iOS は bfcache からの復帰・他アプリからの割り込み・タブ復帰で
+   AudioContext を再び suspended にする。復帰の合図で resume を試みる(D-111)。
+   まだ一度も解錠していない場合は何もしない(初回はユーザー操作の同期文脈が要るため)。 */
+function _sfxResume(){
+  if(!_sfxUnlocked||!_sfxCtx)return;
+  if(_sfxCtx.state==="suspended"){try{_sfxCtx.resume();}catch(e){}}
+}
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)_sfxResume();});
+window.addEventListener("pageshow",_sfxResume);
+window.addEventListener("focus",_sfxResume);
 
 /* 全SEを即時停止(発音中のものも含む)。締めの一斉静止/瞬断/フェード保険で使う。 */
 function stopAllSfx(){
@@ -1804,7 +1826,9 @@ function showToast(msg){
   requestAnimationFrame(()=>requestAnimationFrame(()=>t.classList.add("show")));
   setTimeout(()=>{
     t.classList.remove("show");t.classList.add("hide");
-    t.addEventListener("transitionend",()=>t.remove(),{once:true});
+    /* transitionend はプロパティごとに飛ぶ。opacity 以外(将来 transform 等を足したとき)で
+       消えないよう明示する(D-99 と同型の取りこぼし防止・D-111) */
+    t.addEventListener("transitionend",e=>{if(e.propertyName==="opacity")t.remove();});
     setTimeout(()=>t.remove(),500); /* fallback */
   },2600);
 }
@@ -2928,7 +2952,7 @@ function sentPreview(sid){
 /* 突きつけ判定に使う sid が、実際に lie.proofs の要素かどうか */
 function proofIsValid(sid){return (CASE.lie.proofs||[]).includes(sid);}
 /* 調書の朱の印影(SVG自作・円形)。画像・外部素材は使わない。
-   印面の文字は世界の文章なので Fable 支給待ち。CHOSHO_SEAL_TEXT に入れれば
+   印面の文字は Fable 支給の「認定」(D-86)。CHOSHO_SEAL_TEXT を変えれば
    円周ではなく中央に縦2列で刻まれる(空の間は円だけの空押し)。 */
 const CHOSHO_SEAL_TEXT="認定";  /* Fable支給。1列2字 */
 function choshoSealHTML(){
@@ -2981,7 +3005,7 @@ function renderJudge(){
   wireJudge();
 }
 /* ============================================================
-   認定ヘルプ「認定のてびき」(IE6様式)。本文は Fable 支給待ち。
+   認定ヘルプ「認定のてびき」(IE6様式)。本文は Fable 支給済み(JUDGE_HELP_BODY・D-92)。
    初回に認定パネルを開いた時だけ自動表示。以後は「?」からのみ。
    ============================================================ */
 function openJudgeHelp(){
@@ -3825,7 +3849,7 @@ const SITE_ABOUT_LINES=[
   "本作は架空の掲示板を舞台とするフィクションです。登場する人物・団体・地名・店舗・事件はすべて実在しません。実在の判例を参考にした箇所がありますが、内容は創作です。",
   "本体験版はブラウザ上で動作し、進行状況はお使いの端末内にのみ保存されます。開発者が個人情報を収集・送信することはありません。",
   "本体験版の利用により生じたいかなる損害についても、開発者は責任を負いません。",
-  "お問い合わせ: 開発者のX（@ww56626521）まで。",
+  "お問い合わせ: 開発者のX（@daimon_ge）まで。",
 ];
 function openSiteAbout(){
   if(document.getElementById("siteAboutWin"))return;
