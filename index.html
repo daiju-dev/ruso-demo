@@ -3886,8 +3886,13 @@ function resetFinaleCorner(){
 const LANE_H=32, LANE_MIN=10, LANE_MAX=24, DANMAKU_HARD_MAX=48;
 const DANMAKU_RAMP_MS=4000;   /* 疎→密のランプ(約4秒。2段の波で最密へ) */
 const FINALE_CORNER_DELAY=2600; /* 右下AA表示から弾幕開始までの「数秒」 */
-const DANMAKU_DRAIN_POLL_MS=120; /* 捌け待ちの見張り間隔 */
-const DANMAKU_QUIET_MS=700;   /* 捌け切って静かになってから、締めの一語が流れてくるまでの間 */
+/* 締めの一語は「弾幕の群れの最後尾」として、他の弾がまだ流れているうちに投入する(D-102)。
+   画面が空になる瞬間を挟まないよう、**最後の弾が消えるより NANASHI_OVERLAP_MS だけ手前で
+   中央に到達する**ように逆算して発射する。逆算が短すぎる場合は最低 NANASHI_MIN_DELAY_MS 待つ
+   (=最後の通常弾の少し後)。 */
+const NANASHI_OVERLAP_MS=1200; /* 中央到達を、最後の弾が消える何ms前に置くか */
+const NANASHI_MIN_DELAY_MS=400; /* 供給停止から発射までの最低待ち(最後の通常弾の少し後) */
+const C07_NANASHI_AFTER_TAIL_MS=5200; /* c07: 末尾2語目の投入から、停止語を出すまで */
 const NANASHI_STOP_MS=1600;   /* 締めの一語が中央で止まるまで(CSS transition と揃える) */
 const FINALE_AUTO_HOME_MS=3200; /* 全画面締めの演出が終わってから自動でホームへ戻るまでの一拍 */
 /* 締めの一語。data/danmaku.json の弾幕コア語をそのまま使う(新規執筆はしない) */
@@ -3932,7 +3937,8 @@ function runDanmaku(onDone){
   const LANES=Math.max(LANE_MIN,Math.min(LANE_MAX,Math.floor(H()/LANE_H)));
   /* spawnTimers=生成スケジュール(finishで止める) / rmTimers=各弾の除去(最後まで生かす) */
   const run={alive:true,live:0,items:new Set(),lanes:new Array(LANES).fill(0),
-             spawnTimers:[],rmTimers:[],t0:_now(),done:false,lastTickAt:0};
+             spawnTimers:[],rmTimers:[],t0:_now(),done:false,lastTickAt:0,
+             drainEndAt:0}; /* drainEndAt=いま画面にいる弾のうち、最後の1つが消える時刻 */
   danmakuRun=run;
   /* コメント出現の極小チック。100ms窓で最大1発に間引く。ピッチは±ランダムに散らす。
      密度が上がるほど spawn 回数が増え、自然にチックも増える。 */
@@ -3989,7 +3995,9 @@ function runDanmaku(onDone){
     requestAnimationFrame(()=>{if(run.items.has(el))el.classList.add("fly");});
     /* このレーンが再び空くのは、弾の後端が画面右を抜けてから */
     run.lanes[lane]=now+dur*(w+40)/(W()+w+40);
-    run.rmTimers.push(setTimeout(()=>{el.remove();run.items.delete(el);run.live--;},dur+150));
+    const gone=dur+150;
+    run.drainEndAt=Math.max(run.drainEndAt,now+gone); /* 捌け切りの時刻を更新 */
+    run.rmTimers.push(setTimeout(()=>{el.remove();run.items.delete(el);run.live--;},gone));
     if(!isTail(cls))danmakuTick(); /* 末尾語(c07)は無音。通常弾のみ極小チック */
     return true;
   }
@@ -4019,11 +4027,11 @@ function runDanmaku(onDone){
      一斉静止と瞬断は廃止(D-94)。既存の rmTimers が各弾を最後まで生かす。 */
   function drainOut(){
     for(let i=0;i<LANES;i++)spawn(pickWord(DANMAKU_RAMP_MS)); /* 空きレーンを埋めて最密に到達させる */
-    (function waitDrained(){
-      if(run.done)return;
-      if(run.items.size===0){setTimeout(presentNanashi,DANMAKU_QUIET_MS);return;} /* 静かになってから締めの一語 */
-      setTimeout(waitDrained,DANMAKU_DRAIN_POLL_MS);
-    })();
+    /* 画面が空になる瞬間を作らない。まだ弾がいるうちに停止語を出し、
+       中央到達が「捌け切りの少し手前」に重なるよう逆算する(D-102)。 */
+    const remain=Math.max(0,run.drainEndAt-_now());
+    const delay=Math.max(NANASHI_MIN_DELAY_MS,remain-NANASHI_OVERLAP_MS-NANASHI_STOP_MS);
+    setTimeout(presentNanashi,delay);
   }
   /* c07: 最密後、徐々に疎に(板が散る)→ 静かな画面を最後の2語が順に渡る → 静かにフェード */
   function thinOut(){
@@ -4038,7 +4046,9 @@ function runDanmaku(onDone){
         setTimeout(()=>{ /* 疎になりきった静かな画面に、最後の2語 */
           spawnTail(tail[0],8);
           setTimeout(()=>spawnTail(tail[1]||tail[0],8),1900);
-          setTimeout(presentNanashi,1900+9000); /* 渡り終えたら締めの一語 */
+          /* 2語目が十分に渡ってから、まだ画面にいるうちに停止語を重ねる(D-102)。
+             2語の読みは妨げない = 2語目の投入から C07_NANASHI_AFTER_TAIL_MS 置く。 */
+          setTimeout(presentNanashi,1900+C07_NANASHI_AFTER_TAIL_MS);
         },900);
       }
     })();
