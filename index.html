@@ -36,13 +36,18 @@
     font-family:"MS PGothic","ＭＳ Ｐゴシック","Hiragino Kaku Gothic ProN",sans-serif;
     font-size:13px;
     line-height:1.6;
-    display:flex;align-items:center;justify-content:center;
+    /* safe を付けると、万一はみ出しても中央寄せで上側が切り捨てられず到達できる(保険) */
+    display:flex;align-items:safe center;justify-content:safe center;
     padding:10px;
   }
 
   /* ====== 偽ブラウザ ====== */
   #browser{
-    width:min(1500px,96vw);height:calc(100vh - 24px);
+    /* ズームは中身の文字だけに効かせる。額縁は 1/z して常に画面ぴったりにする(D-108)。
+       こうしないと zoom が vh/vw を補正しないぶん額縁が画面からはみ出し、
+       中央寄せのせいで上側が到達不能になる。 */
+    width:calc(min(1500px,96vw) / var(--zoom,1));
+    height:calc((100vh - 24px) / var(--zoom,1));
     background:var(--chrome);
     border:1px solid #7d7b70;border-radius:6px 6px 0 0;
     display:flex;flex-direction:column;
@@ -637,8 +642,28 @@
   .result.show{display:block;}
 
   /* ガセ特定 */
-  .gase-list label{display:block;font-size:13px;margin:4px 0;cursor:pointer;}
-  .gase-list input{margin-right:6px;}
+  /* ガセ認定の候補(D-107)。スレのレスと同じ体裁のまま、押せることが分かるようにする。
+     選択中は朱の枠と「ガセ」の印。調書の朱印と同系のトーンに合わせる。 */
+  .gase-list .gase-cand{
+    cursor:pointer;position:relative;user-select:none;
+    transition:box-shadow .12s ease,background .12s ease;
+  }
+  .gase-list .gase-cand:hover{background:#fffdf0;box-shadow:0 0 0 1px var(--rule);}
+  .gase-list .gase-cand:focus-visible{outline:2px solid var(--stamp);outline-offset:1px;}
+  /* 印は既定では出さない。選択したときだけ現れる */
+  .gase-list .gase-mark{
+    position:absolute;top:4px;right:6px;z-index:1;
+    font-size:12px;font-weight:700;letter-spacing:.14em;
+    color:#a3221a;border:1.5px solid #a3221a;border-radius:2px;
+    padding:1px 6px;opacity:0;transform:rotate(-8deg);
+    transition:opacity .12s ease;pointer-events:none;
+  }
+  .gase-list .gase-cand.gase-picked{
+    background:#fdf4ef;box-shadow:0 0 0 2px #a3221a;
+  }
+  .gase-list .gase-cand.gase-picked .gase-mark{opacity:.85;}
+  /* 選択中は本文を少し落ち着かせ、印を目立たせる */
+  .gase-list .gase-cand.gase-picked .ph{color:#6b4a44;}
 
   /* ====== リザルト ====== */
   .hanji{
@@ -774,9 +799,19 @@
     #ov_judge .slot2{min-height:38px;}
     #ov_judge .chip{min-height:34px;padding:6px 10px;}
     .qbtn{padding:3px 10px;opacity:.85;}
+    .gase-list .gase-cand{padding:10px 12px;margin:8px 0;}
     /* 締めの停止語は指で押す。判定域を文字の周りに広げる(見た目は変えない) */
     button.danmaku-item.dk-nanashi{padding:14px 22px;}
   }
+
+  /* 体験版の締めに載る支給の締め文 */
+  #finaleAA .demo-outro-note{font-size:13px;color:#cfcaba;line-height:1.9;margin:10px 0;}
+  /* 「このサイトについて」— 実務文書なので板の様式に寄せず可読性優先 */
+  .site-about-link{margin-top:8px;}
+  .site-about-link a{font-size:11px;color:var(--link);text-decoration:underline;cursor:pointer;}
+  .site-about-body{line-height:1.9;font-size:13px;max-width:52em;}
+  .site-about-body p{margin:0 0 12px;}
+  .site-about-body p:last-child{margin-bottom:0;}
 
   /* ===== 起動画面 ===== */
   #boot{
@@ -1799,6 +1834,38 @@ function parseAnchors(s){
 function pipeline(s){ return parseAnchors(parseLinks(parseToks(parseSents(s)))); }
 
 /* --- レス描画 --- */
+/* ガセ認定の候補ブロック(D-107)。
+   本文は **本スレのデータを番号で引き当てて** 表示する。ケース側に候補用の本文を
+   持たせない(二重持ちの禁止)。見た目はスレのレスと同じ .post 構造を使い、
+   タップで .gase-picked を付け外しする。印(「ガセ」)は CSS の ::after ではなく
+   実体の span で置く(読み上げにも乗るように)。 */
+/* 候補レスは本スレの静的レスとは限らない。資料を開いたときの反応レス
+   (pages[].onOpen.threadPosts)にも跨るため、ケースデータ全体から no で引き当てる。
+   引き当て表は初回に1度だけ作る。 */
+let _postIndex=null;
+function postByNo(no){
+  if(!_postIndex){
+    _postIndex={};
+    (function walk(v){
+      if(!v||typeof v!=="object")return;
+      if(Array.isArray(v)){v.forEach(walk);return;}
+      if(typeof v.no==="number"&&typeof v.body==="string"&&_postIndex[v.no]==null)_postIndex[v.no]=v;
+      Object.keys(v).forEach(k=>walk(v[k]));
+    })(CASE);
+  }
+  return _postIndex[no]||null;
+}
+function gaseCandidateHTML(no){
+  const p=postByNo(no);
+  if(!p)return "";
+  const name=p.name||"名無しの傍聴人";
+  const body=p.aa?`<div class="aa">${p.body}</div>`:`<div class="pb">${pipeline(p.body)}</div>`;
+  return `<div class="post gase-cand" data-gase="${no}" role="button" tabindex="0" aria-pressed="false">`
+    +`<span class="gase-mark">ガセ</span>`
+    +`<div class="ph"><span>${p.no}</span> ：<span class="pn">${name}</span>：`
+    +`<span class="pd">${p.date}</span> <span class="pid">ID:${p.uid}</span></div>${body}</div>`;
+}
+
 function renderPost(p,isNew=false){
   const body=p.aa?`<div class="aa">${p.body}</div>`:`<div class="pb">${pipeline(p.body)}</div>`;
   const qb=p.aa?"":`<span class="qbtn" data-quote="${p.no}">ﾉｰﾄへ</span>`;
@@ -2175,15 +2242,17 @@ function renderHome(){
         <div class="boot-hot-head">★ 本日の注目スレッド</div>
         ${hotHTML}
       </div>
-      <div class="boot-history" id="bootHistory">${histHTML}</div>
+      ${histHTML?`<div class="boot-history" id="bootHistory">${histHTML}</div>`:""}
       <div id="bootHomeAd">${renderAd("home")}</div>
       ${demoNavHTML("home")}
-      <div class="boot-footer">${CASE.disclaimer}</div>
+      <div class="boot-footer">${CASE.disclaimer}${isDemo()?`<div class="site-about-link"><a href="#" id="siteAboutLink">このサイトについて</a></div>`:""}</div>
     </div>
   </div>`;
   document.querySelectorAll('#pg_home [data-open-thread]').forEach(el=>{
     el.onclick=()=>activate(CASE.pages[0].id);
   });
+  const sa=document.getElementById("siteAboutLink");
+  if(sa)sa.onclick=e=>{e.preventDefault();openSiteAbout();};
   void cs;
 }
 
@@ -3102,7 +3171,16 @@ function applyZoom(z){
   /* Electron はウィンドウごとズーム、Web は CSS ズーム。状態は1つ */
   const b=window.__rusoBridge;
   if(b&&typeof b.setZoom==="function"){try{b.setZoom(z);}catch(e){}}
-  else{document.body.style.zoom=z;}
+  else{
+    document.body.style.zoom=z;
+    /* 額縁の寸法をズームで割り戻すための係数(D-108)。
+       CSS の zoom は vh/vw を補正しないので、calc(100vh - 24px) がそのまま z 倍されて
+       額縁が画面より高くなる。さらに body が align-items:center のため、
+       はみ出した上半分は**スクロールしても到達できない**(アドレス欄・ブックマークバー=
+       文字サイズを戻す導線ごと画面外に出る)。額縁だけ 1/z しておけば、
+       描画後の寸法は常に画面ぴったりになり、中身の文字だけが z 倍される。 */
+    document.documentElement.style.setProperty("--zoom",z);
+  }
   saveNow();
 }
 function setZoomIndex(i){
@@ -3672,7 +3750,7 @@ function openVerdict(){
     <p><strong>解説:</strong> ${CASE.explanation}</p>
     <div class="q" id="gaseArea">
       <label class="q-label">${CASE.gase.label}</label>
-      <div class="gase-list">${CASE.gase.candidates.map(n=>`<label><input type="checkbox" value="${n}">レス ${n}</label>`).join("")}</div>
+      <div class="gase-list">${CASE.gase.candidates.map(gaseCandidateHTML).join("")}</div>
       <button id="gaseBtn" class="ghost">ガセ認定を提出(任意)</button>
       <div class="result" id="gaseResult"></div>
     </div>
@@ -3717,9 +3795,19 @@ function openVerdict(){
   }
   showToast("判決が出た。スレに動きがある"); /* 新着の告知はこのトーストのみ */
 
+  /* 引用ブロックのタップで選択/解除。再タップで戻せる(誤タップの救済) */
+  el.querySelectorAll(".gase-cand").forEach(c=>{
+    const toggle=()=>{
+      if(document.getElementById("gaseBtn").disabled)return; /* 提出後は動かさない */
+      const on=c.classList.toggle("gase-picked");
+      c.setAttribute("aria-pressed",on?"true":"false");
+    };
+    c.onclick=toggle;
+    c.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();toggle();}};
+  });
   document.getElementById("gaseBtn").onclick=()=>{
-    const sel=[...el.querySelectorAll(".gase-list input:checked")].map(i=>+i.value).sort();
-    const ans=[...CASE.gase.answers].sort();
+    const sel=[...el.querySelectorAll(".gase-cand.gase-picked")].map(c=>+c.dataset.gase).sort((a,b)=>a-b);
+    const ans=[...CASE.gase.answers].sort((a,b)=>a-b);
     const ok=sel.length===ans.length&&sel.every((v,i)=>v===ans[i]);
     const gr=document.getElementById("gaseResult");
     gr.classList.add("show");
@@ -3731,6 +3819,29 @@ function openVerdict(){
   };
 }
 
+/* 体験版サイトの実務文書(Fable支給・一字不変)。世界の文章ではないので板の様式には寄せず、
+   可読性を優先した IE6 様式の窓で出す。製品ビルドには出さない。 */
+const SITE_ABOUT_LINES=[
+  "本作は架空の掲示板を舞台とするフィクションです。登場する人物・団体・地名・店舗・事件はすべて実在しません。実在の判例を参考にした箇所がありますが、内容は創作です。",
+  "本体験版はブラウザ上で動作し、進行状況はお使いの端末内にのみ保存されます。開発者が個人情報を収集・送信することはありません。",
+  "本体験版の利用により生じたいかなる損害についても、開発者は責任を負いません。",
+  "お問い合わせ: 開発者のX（@ww56626521）まで。",
+];
+function openSiteAbout(){
+  if(document.getElementById("siteAboutWin"))return;
+  const w=document.createElement("div");
+  w.className="opt-confirm";w.id="siteAboutWin";
+  w.innerHTML=`<div class="opt-win">
+    <div class="opt-titlebar"><span>このサイトについて</span><span class="opt-x" id="siteAboutX">×</span></div>
+    <div class="opt-body"><div class="site-about-body">${SITE_ABOUT_LINES.map(t=>`<p>${t}</p>`).join("")}</div></div>
+    <div class="opt-foot"><button class="opt-btn" id="siteAboutOk">OK</button></div>
+  </div>`;
+  document.body.appendChild(w);
+  const close=()=>w.remove();
+  w.querySelector("#siteAboutX").onclick=close;
+  w.querySelector("#siteAboutOk").onclick=close;
+}
+
 /* --- 体験版の外部リンク(製品ビルドでは全て出ない) --- */
 function isDemo(){return typeof __DEMO__!=="undefined"&&__DEMO__;}
 function demoLinks(){
@@ -3740,14 +3851,24 @@ function demoLinks(){
 }
 /* クリア後画面。設定が空のリンクは描画しない(死んだボタンを出さない)。
    両方空のときのみ「製作中」ダイアログの保険ボタンを出す。 */
+/* 体験版の締め文(Fable支給・一字不変)。
+   **差し替え箇所**: 2行目の「配信予定」は、Steamストア公開後に「配信中」へ変える。 */
+const DEMO_OUTRO_LINES=[
+  "体験版はここまでです。最後まで傍聴いただき、ありがとうございました。",
+  "製品版（全七章）はPC向けにSteamで配信予定です。スマートフォンでは体験版のみ遊べます。",
+];
 function demoOutroHTML(){
   if(!isDemo())return "";
   const {x,steam}=demoLinks();
   const a=(url,label)=>url?`<a class="demo-btn" href="${url}" target="_blank" rel="noopener">${label}</a>`:"";
   const btns=[a(steam,"Steamでウィッシュリストに追加"),a(x,"開発者のXを見る")].filter(Boolean).join("");
   const body=btns||`<button class="demo-btn" id="demoBtn">続きを見る</button>`;
+  /* 序章文の後・ボタン群の前に Fable 支給の締め文(一字不変)。
+     「配信予定」はストア公開後に「配信中」へ差し替える(差し替え箇所は DEMO_OUTRO_LINES の2行目)。 */
+  const lines=DEMO_OUTRO_LINES.map(t=>`<p class="demo-outro-note">${t}</p>`).join("");
   return `<div class="demo-outro">
     <p>この事件は序章です。あかしや掲示板の祭りは、あと6つ続きます</p>
+    ${lines}
     ${body}
   </div>`;
 }
