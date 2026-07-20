@@ -760,6 +760,24 @@
   }
   #finaleAA .finale-home a:hover,#finaleAA .finale-home a:focus-visible{color:#fff;}
 
+
+  /* ===== スマホ(タッチ)向けの最小調整 =====
+     モバイル専用UIは作らない。構造は一切変えず、タップ領域(padding/min-height)だけ
+     指で押せる大きさに広げる。細いポインタ(マウス)の環境には影響しない(D-104)。 */
+  @media (pointer:coarse){
+    .bm{padding:8px 12px;}
+    .navbtn{padding:6px 10px;}
+    .btab{padding:8px 10px 8px 12px;}
+    #bookmarkbar{padding:5px 10px 7px;}
+    #submitBtn{min-height:44px;}
+    .opt-btn{min-height:38px;padding:7px 14px;}
+    #ov_judge .slot2{min-height:38px;}
+    #ov_judge .chip{min-height:34px;padding:6px 10px;}
+    .qbtn{padding:3px 10px;opacity:.85;}
+    /* 締めの停止語は指で押す。判定域を文字の周りに広げる(見た目は変えない) */
+    button.danmaku-item.dk-nanashi{padding:14px 22px;}
+  }
+
   /* ===== 起動画面 ===== */
   #boot{
     position:fixed;inset:0;z-index:50;
@@ -3038,6 +3056,9 @@ document.addEventListener("click",e=>{
 const ZOOM_STEPS=[0.85,1.0,1.15,1.3,1.5,1.9,2.3];
 const ZOOM_LABELS=["最小","小","中","大","最大","特大","極大"];
 const ZOOM_DEFAULT=1.3;    /* 基準を一段引き上げ(旧1.15)。FHDでも従来より大きい */
+/* この幅を下回る画面は「スマホ・小窓」とみなし、自動ズームを等倍にする(D-104)。
+   タブレット横(1024)は従来どおり ZOOM_DEFAULT に載せたいので 900 に置いた。 */
+const MOBILE_W=900;
 function zoomIndex(){
   const z=window.__rusoSave.zoom;
   const i=ZOOM_STEPS.indexOf(z);
@@ -3069,6 +3090,10 @@ function autoZoomFor(cssWidth){
   if(w>=3400)return 2.3;   /* 4K を等倍(100%)で使っている */
   if(w>=2500)return 1.9;   /* WQHD〜4K@125% */
   if(w>=2000)return 1.5;   /* 1920超〜WQHD */
+  /* スマホ・小さいウィンドウは等倍。zoom は 100vh にも掛かるため、狭い画面で
+     ZOOM_DEFAULT(1.3) を当てると額縁の高さ(calc(100vh - 24px))が画面の1.3倍になり、
+     下端(ステータスバー)が画面外へ出る。実測: 390x844 で額縁 bottom=971 > 844(D-104)。 */
+  if(w<MOBILE_W)return 1.0;
   return ZOOM_DEFAULT;     /* FHD以下 */
 }
 (function(){
