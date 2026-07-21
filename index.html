@@ -895,11 +895,11 @@
     font-size:11px;color:var(--dim);border-bottom:1px solid var(--rule);
     padding-bottom:4px;margin-bottom:6px;
   }
+  /* 色は指定しない。ブラウザ既定の未訪問=青/訪問済み=紫に任せる(D-116)。
+     独自に色を当てると、実際の訪問状態と食い違ったまま固定されてしまう。 */
   .boot-history a{
     display:block;font-size:12px;padding:2px 0;text-decoration:underline;
   }
-  .boot-history a.unvisited{color:var(--link);}
-  .boot-history a.visited{color:var(--visited);}
   .boot-footer{
     font-size:10px;color:var(--dim);margin-top:20px;border-top:1px dotted var(--rule);
     padding-top:8px;line-height:1.6;
@@ -2262,11 +2262,14 @@ function renderHome(){
   /* 体験版・単体ビルド(章一覧が無い)ではこの章のスレを出す */
   const hotHTML=hot||`<span class="boot-hot-link" data-open-thread="1">${CASE.title}</span>`;
 
+  /* 履歴の章は**全てリンク**にする(D-116)。自章だけ span にすると押せない素テキストに見え、
+     色も他章と揃わない。自章も自分自身の caseNN.html#thread を指す普通のリンクにして、
+     色はブラウザ既定の未訪問=青/訪問済み=紫に任せる(本物のブラウザの作法)。
+     自章リンクを踏むと同じHTMLを #thread 付きで開き直す = 起動時の分岐(location.hash)で
+     ホームを履歴に積んでから本スレを開く、という現行の再訪の挙動になる。 */
   const histHTML=cleared.length
     ? `<div class="boot-history-head">履歴</div>`
-      +cleared.map(c=>(c.num===caseNum
-        ? `<span class="visited" data-open-thread="1">CASE ${c.num}</span>`
-        : `<a class="visited" href="${c.file}#thread">CASE ${c.num}</a>`)).join("")
+      +cleared.map(c=>`<a href="${c.file}#thread">CASE ${c.num}</a>`).join("")
     : "";
 
   document.getElementById("pg_home").innerHTML=`<div class="boot-hp">
